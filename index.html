@@ -19,6 +19,7 @@ h1{font-size:19px;margin:0}.sub{font-size:11px;opacity:.85;margin-top:2px}
 button,input,select{font:inherit}button{min-height:42px;cursor:pointer} .actions{display:flex;gap:7px;flex-wrap:wrap}.actions button{border:1px solid #cbd3da;background:#fff;border-radius:8px;padding:8px 11px;font-weight:700}.actions .primary{background:#1f6f4a;color:#fff;border-color:#1f6f4a}
 input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{font-size:12px;color:#66717d}.legend{display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:11px}.leg{display:flex;gap:6px;align-items:center}.sw{width:25px;height:5px;border-radius:5px}.county{width:22px;height:15px;border:2px solid #68737e;background:#f3f5f6}
 .hidden{display:none}.note{font-size:11px;line-height:1.45;color:#5f6872}
+.map-info,.map-legend{background:rgba(255,255,255,.94);padding:8px 10px;border:1px solid #cbd3da;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.15);font-size:11px;line-height:1.45}.map-info span{color:#58636e}.map-legend{margin:0 0 8px 8px}.map-legend div{margin-top:3px}.map-legend .small{color:#68737e}.swatch{display:inline-block;width:22px;height:6px;border-radius:4px;margin-right:5px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -57,22 +58,43 @@ let state={counties:{},routes:{},selected:null};try{Object.assign(state,JSON.par
 state.counties ||= {};state.routes ||= {};
 function save(){localStorage.setItem("tlwv",JSON.stringify(state));stats()}
 function people(v){return v?.people||"both"}
-function cstyle(f){let id=String(f.properties.FIPS??f.properties.CO_CODE??f.properties.OBJECTID),v=state.counties[id];return{color:v?"#a92f2a":"#68737e",weight:v?2.2:1,fillColor:v?"#d94841":"#f3f5f6",fillOpacity:v?.58:.28}}
-function rstyle(f){let p=f.properties||{},v=state.routes[String(p.OBJECTID)],s=String(p.SignSystem),c=s==="1"?"#2458a6":s==="2"?"#d66b6b":"#555";return{color:v?"#6a3dad":c,weight:v?6:(s==="1"?4:3),opacity:v?1:.85}}
-const map=L.map("map",{zoomControl:false}).setView([38.65,-80.6],7);L.control.zoom({position:"bottomright"}).addTo(map);
+function personColor(v){return !v?null:(people(v)==="tim"?"#e05a47":people(v)==="lori"?"#2d6cdf":"#7b3fc6")}
+function cstyle(f){let id=String(f.properties.FIPS??f.properties.CO_CODE??f.properties.OBJECTID),v=state.counties[id],c=personColor(v);return{color:c||"#68737e",weight:c?3:1,fillColor:c||"#f3f5f6",fillOpacity:c?.62:.12}}
+function rstyle(f){let p=f.properties||{},v=state.routes[String(p.OBJECTID)],s=String(p.SignSystem),c=s==="1"?"#2458a6":s==="2"?"#d66b6b":"#777";return{color:personColor(v)||c,weight:v?7:(s==="1"?4:2),opacity:v?1:(s==="1"?.9:.55)}}
+const map=L.map("map",{zoomControl:false}).setView([38.65,-80.6],7.6);L.control.zoom({position:"bottomright"}).addTo(map);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
-L.circle([38.65,-80.6],{radius:160934,color:"#5b7c99",weight:2,dashArray:"8 7",fillOpacity:.05}).addTo(map);
-const counties=L.esri.featureLayer({url:COUNTY_URL,where:"1=1",style:cstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.FIPS??p.CO_CODE??p.OBJECTID),name=p.NAME||"County";l.bindTooltip(name,{sticky:true});l.on("click",()=>select("county",id,name))}}).addTo(map);
-const routes=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem IN ('1','2','3')",style:rstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.OBJECTID),type=String(p.SignSystem)==="1"?"Interstate":String(p.SignSystem)==="2"?"U.S. Route":"WV Route",name=p.Label||p.Route||"Route";l.bindTooltip(name+" — "+type,{sticky:true});l.on("click",()=>select("route",id,name,type))}}).addTo(map);
+L.circle([38.65,-80.6],{radius:160934,color:"#6f8799",weight:1,dashArray:"6 8",fillOpacity:.025,interactive:false}).addTo(map);
+
+const countyLayer=L.esri.featureLayer({url:COUNTY_URL,where:"1=1",style:cstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.FIPS??p.CO_CODE??p.OBJECTID),name=p.NAME||"County";l.on("click",()=>select("county",id,name))}}).addTo(map);
+
+const stateRouteLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '3'",style:rstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.OBJECTID),name=p.Label||p.Route||"WV Route";l.on("click",()=>select("route",id,name,"WV Route"))}});
+const usRouteLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '2'",style:rstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.OBJECTID),name=p.Label||p.Route||"U.S. Route";l.on("click",()=>select("route",id,name,"U.S. Route"))}}).addTo(map);
+const interstateLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '1'",style:rstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.OBJECTID),name=p.Label||p.Route||"Interstate";l.on("click",()=>select("route",id,name,"Interstate"))}}).addTo(map);
+
+function routeVisibility(){
+  const z=map.getZoom();
+  const showWV=z>=8.2;
+  const showUS=z>=7.0;
+  if(showWV && !map.hasLayer(stateRouteLayer)) stateRouteLayer.addTo(map);
+  if(!showWV && map.hasLayer(stateRouteLayer)) map.removeLayer(stateRouteLayer);
+  if(showUS && !map.hasLayer(usRouteLayer)) usRouteLayer.addTo(map);
+  if(!showUS && map.hasLayer(usRouteLayer)) map.removeLayer(usRouteLayer);
+}
+map.on("zoomend",routeVisibility);
+
+const info=L.control({position:"topright"});info.onAdd=function(){const d=L.DomUtil.create("div","map-info");d.innerHTML='<b>Map tips</b><br><span>Zoom in to see WV state routes.</span><br><span>Click a county or road to mark it.</span>';L.DomEvent.disableClickPropagation(d);return d};info.addTo(map);
+const legend=L.control({position:"bottomleft"});legend.onAdd=function(){const d=L.DomUtil.create("div","map-legend");d.innerHTML='<b>Travel colors</b><div><i class="swatch" style="background:#e05a47"></i> Tim</div><div><i class="swatch" style="background:#2d6cdf"></i> Lori</div><div><i class="swatch" style="background:#7b3fc6"></i> Both</div><div class="small">Gray = not visited</div>';return d};legend.addTo(map);
+routeVisibility();
+
 function select(kind,id,name,type){state.selected={kind,id,name,type};let x=document.createElement("div");x.innerHTML=`<div style="padding:8px 10px"><b>${name}</b><br><small>${kind==="county"?"County":type}</small><div class="actions" style="margin-top:8px"><button class="primary" onclick="mark('tim')">Tim</button><button class="primary" onclick="mark('lori')">Lori</button><button class="primary" onclick="mark('both')">Both</button><button onclick="clearMark()">Clear</button></div></div>`;L.popup().setLatLng(map.getCenter()).setContent(x).openOn(map)}
-window.mark=p=>{let s=state.selected;if(!s)return;let t=s.kind==="county"?state.counties:state.routes;t[s.id]={name:s.name,people:p,date:new Date().toISOString().slice(0,10)};save();counties.setStyle(cstyle);routes.setStyle(rstyle);map.closePopup()}
-window.clearMark=()=>{let s=state.selected;if(!s)return;delete (s.kind==="county"?state.counties:state.routes)[s.id];save();counties.setStyle(cstyle);routes.setStyle(rstyle);map.closePopup()}
+window.mark=p=>{let s=state.selected;if(!s)return;let t=s.kind==="county"?state.counties:state.routes;t[s.id]={name:s.name,people:p,date:new Date().toISOString().slice(0,10)};save();countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);map.closePopup()}
+window.clearMark=()=>{let s=state.selected;if(!s)return;delete (s.kind==="county"?state.counties:state.routes)[s.id];save();countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);map.closePopup()}
 function stats(){let vals=[...Object.values(state.counties),...Object.values(state.routes)],t=0,l=0;vals.forEach(v=>{if(people(v)==="tim"||people(v)==="both")t++;if(people(v)==="lori"||people(v)==="both")l++});document.getElementById("cc").textContent=Object.keys(state.counties).length+" / 55";document.getElementById("rc").textContent=Object.keys(state.routes).length;document.getElementById("tc").textContent=t;document.getElementById("lc").textContent=l}
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));document.getElementById(b.dataset.tab).classList.remove("hidden");if(b.dataset.tab==="maptab")setTimeout(()=>map.invalidateSize(),100)});
 document.getElementById("export").onclick=()=>{let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),counties:state.counties,routes:state.routes},null,2)],{type:"application/json"}));a.download="tim-lori-wv-travel-backup.json";a.click()};
 document.getElementById("import").onclick=()=>document.getElementById("file").click();
-document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};save();counties.setStyle(cstyle);routes.setStyle(rstyle);alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
+document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};save();countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
 document.getElementById("reset").onclick=()=>{if(confirm("Clear all travel markings?")){state.counties={};state.routes={};save();counties.setStyle(cstyle);routes.setStyle(rstyle)}};
-stats();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]]),700);
+stats();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]],{padding:[18,18]}),500);
 </script>
 </body></html>
