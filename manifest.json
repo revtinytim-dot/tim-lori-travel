@@ -1,6 +1,6 @@
 {
-  "name": "Tim & Lori's WV Travel Map",
-  "short_name": "Tim & Lori Travels",
+  "name": "Timmy & Lori's Travels",
+  "short_name": "Timmy & Lori Travels",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#eef2f5",

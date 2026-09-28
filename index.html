@@ -8,12 +8,12 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>Tim & Lori's Travels</title>
+<title>Timmy & Lori's Travels</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#18212b;background:#eef2f5}
 header{background:#173b2c;color:#fff;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));position:sticky;top:0;z-index:1000}
 h1{font-size:19px;margin:0}.sub{font-size:11px;opacity:.85;margin-top:2px}
-.tabs{display:flex;gap:6px;margin-top:9px;overflow:auto}.tabs button{white-space:nowrap;border:1px solid #ffffff44;background:#ffffff18;color:#fff;border-radius:20px;padding:8px 12px;font-weight:700}.tabs button.active{background:#fff;color:#173b2c}
+.tabs{display:flex;gap:6px;margin-top:9px;overflow:auto}.tabs button{white-space:nowrap;border:1px solid #ffffff44;background:#ffffff18;color:#fff;border-radius:20px;padding:8px 12px;font-weight:700}.tabs button.active{background:#fff;color:#173b2c}.tabs .filterBtn.on{background:#f3d2ea;color:#4b205f;border-color:#f3d2ea}
 #map{height:62vh;min-height:430px}.panel{padding:10px 12px 24px}.card{background:#fff;border:1px solid #d8dee5;border-radius:12px;padding:12px;margin-bottom:10px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{padding:10px;border-radius:10px;background:#f3f5f6}.num{font-size:22px;font-weight:800}.label{font-size:11px;color:#66717d}
 button,input,select{font:inherit}button{min-height:42px;cursor:pointer} .actions{display:flex;gap:7px;flex-wrap:wrap}.actions button{border:1px solid #cbd3da;background:#fff;border-radius:8px;padding:8px 11px;font-weight:700}.actions .primary{background:#1f6f4a;color:#fff;border-color:#1f6f4a}
@@ -24,8 +24,8 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 </head>
 <body>
 <header>
-<h1>Tim & Lori's Travels</h1><div class="sub">West Virginia & surrounding 100-mile area</div>
-<div class="tabs"><button class="active" data-tab="maptab">Map</button><button data-tab="progress">Progress</button><button data-tab="backup">Backup</button></div>
+<h1>Timmy & Lori's Travels</h1><div class="sub">West Virginia & surrounding 100-mile area</div>
+<div class="tabs"><button class="active" data-tab="maptab">Map</button><button data-tab="progress">Progress</button><button data-tab="backup">Backup</button><button id="travelOnly" class="filterBtn" type="button">Show only our travels</button></div>
 </header>
 <section id="maptab"><div id="map"></div></section>
 <section id="progress" class="panel hidden">
@@ -54,13 +54,14 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <script>
 const COUNTY_URL="https://gis.transportation.wv.gov/arcgis/rest/services/Base_Maps/WVDOT_Base_Map_WM/FeatureServer/31";
 const ROUTE_URL="https://gis.transportation.wv.gov/arcgis/rest/services/Base_Maps/RoadCache/FeatureServer/6";
-let state={counties:{},routes:{},selected:null};try{Object.assign(state,JSON.parse(localStorage.getItem("tlwv")||"{}"))}catch(e){}
+let state={counties:{},routes:{},selected:null,travelOnly:false};try{Object.assign(state,JSON.parse(localStorage.getItem("tlwv")||"{}"))}catch(e){}
+state.travelOnly=!!state.travelOnly;
 state.counties ||= {};state.routes ||= {};
 function save(){localStorage.setItem("tlwv",JSON.stringify(state));stats()}
 function people(v){return v?.people||"both"}
 function personColor(v){return !v?null:(people(v)==="tim"?"#e05a47":people(v)==="lori"?"#2d6cdf":"#7b3fc6")}
-function cstyle(f){let id=String(f.properties.FIPS??f.properties.CO_CODE??f.properties.OBJECTID),v=state.counties[id],c=personColor(v);return{color:c||"#68737e",weight:c?3:1,fillColor:c||"#f3f5f6",fillOpacity:c?.62:.12}}
-function rstyle(f){let p=f.properties||{},v=state.routes[String(p.OBJECTID)],s=String(p.SignSystem),c=s==="1"?"#2458a6":s==="2"?"#d66b6b":"#777";return{color:personColor(v)||c,weight:v?7:(s==="1"?4:2),opacity:v?1:(s==="1"?.9:.55)}}
+function cstyle(f){let id=String(f.properties.FIPS??f.properties.CO_CODE??f.properties.OBJECTID),v=state.counties[id],c=personColor(v);if(state.travelOnly && !v)return{color:"#68737e",weight:0,fillColor:"#f3f5f6",fillOpacity:0};return{color:c||"#68737e",weight:c?3:1,fillColor:c||"#f3f5f6",fillOpacity:c?.62:.12}}
+function rstyle(f){let p=f.properties||{},v=state.routes[String(p.OBJECTID)],s=String(p.SignSystem),c=s==="1"?"#2458a6":s==="2"?"#d66b6b":"#777";if(state.travelOnly && !v)return{color:c,weight:0,opacity:0};return{color:personColor(v)||c,weight:v?7:(s==="1"?4:2),opacity:v?1:(s==="1"?.9:.55)}}
 const map=L.map("map",{zoomControl:false}).setView([38.65,-80.6],7.6);L.control.zoom({position:"bottomright"}).addTo(map);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
 L.circle([38.65,-80.6],{radius:160934,color:"#6f8799",weight:1,dashArray:"6 8",fillOpacity:.025,interactive:false}).addTo(map);
@@ -71,6 +72,7 @@ const stateRouteLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '3'
 const usRouteLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '2'",style:rstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.OBJECTID),name=p.Label||p.Route||"U.S. Route";l.on("click",()=>select("route",id,name,"U.S. Route"))}}).addTo(map);
 const interstateLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '1'",style:rstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.OBJECTID),name=p.Label||p.Route||"Interstate";l.on("click",()=>select("route",id,name,"Interstate"))}}).addTo(map);
 
+function refreshLayers(){countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);routeVisibility();document.getElementById("travelOnly").classList.toggle("on",state.travelOnly);document.getElementById("travelOnly").textContent=state.travelOnly?"Show all roads & counties":"Show only our travels"}
 function routeVisibility(){
   const z=map.getZoom();
   const showWV=z>=8.2;
@@ -87,14 +89,14 @@ const legend=L.control({position:"bottomleft"});legend.onAdd=function(){const d=
 routeVisibility();
 
 function select(kind,id,name,type){state.selected={kind,id,name,type};let x=document.createElement("div");x.innerHTML=`<div style="padding:8px 10px"><b>${name}</b><br><small>${kind==="county"?"County":type}</small><div class="actions" style="margin-top:8px"><button class="primary" onclick="mark('tim')">Tim</button><button class="primary" onclick="mark('lori')">Lori</button><button class="primary" onclick="mark('both')">Both</button><button onclick="clearMark()">Clear</button></div></div>`;L.popup().setLatLng(map.getCenter()).setContent(x).openOn(map)}
-window.mark=p=>{let s=state.selected;if(!s)return;let t=s.kind==="county"?state.counties:state.routes;t[s.id]={name:s.name,people:p,date:new Date().toISOString().slice(0,10)};save();countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);map.closePopup()}
-window.clearMark=()=>{let s=state.selected;if(!s)return;delete (s.kind==="county"?state.counties:state.routes)[s.id];save();countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);map.closePopup()}
+window.mark=p=>{let s=state.selected;if(!s)return;let t=s.kind==="county"?state.counties:state.routes;t[s.id]={name:s.name,people:p,date:new Date().toISOString().slice(0,10)};save();refreshLayers();map.closePopup()}
+window.clearMark=()=>{let s=state.selected;if(!s)return;delete (s.kind==="county"?state.counties:state.routes)[s.id];save();refreshLayers();map.closePopup()}
 function stats(){let vals=[...Object.values(state.counties),...Object.values(state.routes)],t=0,l=0;vals.forEach(v=>{if(people(v)==="tim"||people(v)==="both")t++;if(people(v)==="lori"||people(v)==="both")l++});document.getElementById("cc").textContent=Object.keys(state.counties).length+" / 55";document.getElementById("rc").textContent=Object.keys(state.routes).length;document.getElementById("tc").textContent=t;document.getElementById("lc").textContent=l}
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));document.getElementById(b.dataset.tab).classList.remove("hidden");if(b.dataset.tab==="maptab")setTimeout(()=>map.invalidateSize(),100)});
 document.getElementById("export").onclick=()=>{let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),counties:state.counties,routes:state.routes},null,2)],{type:"application/json"}));a.download="tim-lori-wv-travel-backup.json";a.click()};
 document.getElementById("import").onclick=()=>document.getElementById("file").click();
-document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};save();countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
-document.getElementById("reset").onclick=()=>{if(confirm("Clear all travel markings?")){state.counties={};state.routes={};save();counties.setStyle(cstyle);routes.setStyle(rstyle)}};
-stats();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]],{padding:[18,18]}),500);
+document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};save();refreshLayers();alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
+document.getElementById("reset").onclick=()=>{if(confirm("Clear all travel markings?")){state.counties={};state.routes={};save();refreshLayers()}};
+stats();refreshLayers();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]],{padding:[18,18]}),500);
 </script>
 </body></html>
