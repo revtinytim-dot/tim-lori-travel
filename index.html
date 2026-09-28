@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>Timmy & Lori's Travels</title>
+<title>Tim & Lori's Travels</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#18212b;background:#eef2f5}
 header{background:#173b2c;color:#fff;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));position:sticky;top:0;z-index:1000}
@@ -24,7 +24,7 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 </head>
 <body>
 <header>
-<h1>Timmy & Lori's Travels</h1><div class="sub">West Virginia & surrounding 100-mile area</div>
+<h1>Tim & Lori's Travels</h1><div class="sub">West Virginia & surrounding 100-mile area</div>
 <div class="tabs"><button class="active" data-tab="maptab">Map</button><button data-tab="progress">Progress</button><button data-tab="backup">Backup</button><button id="travelOnly" class="filterBtn" type="button">Show only our travels</button></div>
 </header>
 <section id="maptab"><div id="map"></div></section>
@@ -84,7 +84,6 @@ function routeVisibility(){
 }
 map.on("zoomend",routeVisibility);
 
-const info=L.control({position:"topright"});info.onAdd=function(){const d=L.DomUtil.create("div","map-info");d.innerHTML='<b>Map tips</b><br><span>Zoom in to see WV state routes.</span><br><span>Click a county or road to mark it.</span>';L.DomEvent.disableClickPropagation(d);return d};info.addTo(map);
 const legend=L.control({position:"bottomleft"});legend.onAdd=function(){const d=L.DomUtil.create("div","map-legend");d.innerHTML='<b>Travel colors</b><div><i class="swatch" style="background:#e05a47"></i> Tim</div><div><i class="swatch" style="background:#2d6cdf"></i> Lori</div><div><i class="swatch" style="background:#7b3fc6"></i> Both</div><div class="small">Gray = not visited</div>';return d};legend.addTo(map);
 routeVisibility();
 
