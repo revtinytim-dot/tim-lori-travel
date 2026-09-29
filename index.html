@@ -32,9 +32,7 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <section id="progress" class="panel hidden">
 <div class="card"><div class="stats">
 <div class="stat"><div class="num" id="cc">0 / 55</div><div class="label">WV counties</div></div>
-<div class="stat"><div class="num" id="rc">0</div><div class="label">WV route segments</div></div>
-<div class="stat"><div class="num" id="erc">0</div><div class="label">outside-WV roads</div></div>
-<div class="stat"><div class="num" id="ntc">0</div><div class="label">outside-WV towns</div></div>
+<div class="stat"><div class="num" id="rc">0</div><div class="label">route segments</div></div>
 <div class="stat"><div class="num" id="pc">0 / 37</div><div class="label">WV parks & forests</div></div>
 <div class="stat"><div class="num" id="tc">0</div><div class="label">Tim entries</div></div>
 <div class="stat"><div class="num" id="lc">0</div><div class="label">Lori entries</div></div>
@@ -60,20 +58,19 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <div class="card"><b>🌿 Parks Tim & Lori Both Visited</b><div id="bothVisitedParks" class="note" style="margin-top:8px">No parks marked as visited by both yet.</div></div>
 <div class="card"><div class="note"><b>Park information source:</b> West Virginia State Parks. Lodging means the park currently lists cabins, a lodge, or another overnight stay. Restaurant status reflects an on-site dining operation listed by WV State Parks & Forests; hours and availability can change seasonally.</div></div>
 </section>
-<section id="backup" class="panel hidden"><div class="card"><b>App version</b><div class="note">State Parks + Forests + WV roads/counties + roads/towns within 100 miles outside WV • Tim red • Lori blue • Both purple/green • Build 2026-09-29 • outside-area click system rebuilt</div></div>
+<section id="backup" class="panel hidden"><div class="card"><b>App version</b><div class="note">State Parks + markers + Both roads = purple • Both counties = light green/gray border • Build 2026-09-29 • Road clicking fixed</div></div>
 <div class="card"><b>Travel History Backup</b><p class="note">Your map markings are stored on this phone/browser. Export a backup occasionally so your travel history is safe.</p>
 <div class="actions"><button class="primary" id="export">Export Backup</button><button id="import">Import Backup</button><input id="file" type="file" accept=".json" hidden></div></div>
 <div class="card"><b>Clear all tracking</b><p class="note">This removes the markings stored on this device. Export a backup first.</p><button id="reset">Reset Tracking</button></div>
 </section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/esri-leaflet@3.0.15/dist/esri-leaflet.js"></script>
-<script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
 <script>
 const COUNTY_URL="https://gis.transportation.wv.gov/arcgis/rest/services/Base_Maps/WVDOT_Base_Map_WM/FeatureServer/31";
 const ROUTE_URL="https://gis.transportation.wv.gov/arcgis/rest/services/Base_Maps/RoadCache/FeatureServer/6";
-let state={counties:{},routes:{},parks:{},externalRoutes:{},towns:{},selected:null,travelOnly:false};try{Object.assign(state,JSON.parse(localStorage.getItem("tlwv")||"{}"))}catch(e){}
+let state={counties:{},routes:{},parks:{},selected:null,travelOnly:false};try{Object.assign(state,JSON.parse(localStorage.getItem("tlwv")||"{}"))}catch(e){}
 state.travelOnly=!!state.travelOnly;
-state.counties ||= {};state.routes ||= {};state.parks ||= {};state.externalRoutes ||= {};state.towns ||= {};
+state.counties ||= {};state.routes ||= {};state.parks ||= {};
 function save(){localStorage.setItem("tlwv",JSON.stringify(state));stats()}
 function people(v){return v?.people||"both"}
 function personColor(v){return !v?null:(people(v)==="tim"?"#e05a47":people(v)==="lori"?"#2d6cdf":"#9BE564")}
@@ -83,85 +80,6 @@ function rstyle(f){let p=f.properties||{},v=state.routes[String(p.OBJECTID)],s=S
 const map=L.map("map",{zoomControl:false,preferCanvas:true}).setView([38.65,-80.6],7.6);L.control.zoom({position:"bottomright"}).addTo(map);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
 L.circle([38.65,-80.6],{radius:160934,color:"#6f8799",weight:1,dashArray:"6 8",fillOpacity:.025,interactive:false}).addTo(map);
-
-const WV_BOUNDARY_URL="https://gis.transportation.wv.gov/arcgis/rest/services/Boundaries/FeatureServer/2";
-const OUTSIDE_TRANSPORT_URL="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Transportation/MapServer";
-const OUTSIDE_PLACES_URL="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer";
-let wvBoundary=null,outsideZone=null;
-function outsideTravelAllowed(latlng){
-  const pt=turf.point([latlng.lng,latlng.lat]);
-  if(outsideZone&&wvBoundary) return turf.booleanPointInPolygon(pt,outsideZone) && !turf.booleanPointInPolygon(pt,wvBoundary);
-  // Fallback while the WV boundary request is loading: use a broad 100-mile-ish
-  // surrounding envelope so outside roads remain clickable rather than disabled.
-  return latlng.lat>=35.6&&latlng.lat<=42.2&&latlng.lng>=-85.5&&latlng.lng<=-74.5;
-}
-function townStatus(i){const v=state.towns[i];return v?.people||null}
-function townIcon(i){const v=townStatus(i),c=v==="tim"?"#e05a47":v==="lori"?"#2d6cdf":v==="both"?"#7a3fb5":"#4b5563";return L.divIcon({className:"",html:`<div style="width:13px;height:13px;border-radius:50%;background:${c};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>`,iconSize:[13,13],iconAnchor:[6,6]})}
-
-// Reliable surrounding-area layers. Census TIGERweb exposes real Feature Layers for
-// primary/secondary/local roads and places. Using FeatureLayers (rather than trying
-// to identify a rendered map image) gives every road/place a real Leaflet click event.
-const OUTSIDE_PRIMARY_URL=OUTSIDE_TRANSPORT_URL+"/2";
-const OUTSIDE_MAJOR_URL=OUTSIDE_TRANSPORT_URL+"/3";
-const OUTSIDE_SECONDARY_URL=OUTSIDE_TRANSPORT_URL+"/6";
-const OUTSIDE_LOCAL_URL=OUTSIDE_TRANSPORT_URL+"/8";
-const OUTSIDE_PLACE_URL=OUTSIDE_PLACES_URL+"/4";
-const OUTSIDE_CDP_URL=OUTSIDE_PLACES_URL+"/5";
-
-function outsideRoadAllowed(e){return outsideTravelAllowed(e.latlng)}
-function externalRoadClicked(kind,f,l,e){
-  if(!outsideRoadAllowed(e))return;
-  const p=f.properties||{};
-  const id=String(p.OBJECTID??p.OID??p.GEOID??p.FID);
-  const name=p.NAME||p.BASENAME||p.FULLNAME||"Road outside West Virginia";
-  select("externalRoute","census:"+kind+":"+id,name,"Road outside WV",e.latlng);
-}
-function outsideRoadStyle(f){
-  const p=f.properties||{},id=String(p.OBJECTID??p.OID??p.GEOID??p.FID),v=state.externalRoutes["census:"+id]||state.externalRoutes["census:primary:"+id]||state.externalRoutes["census:major:"+id]||state.externalRoutes["census:secondary:"+id]||state.externalRoutes["census:local:"+id];
-  if(state.travelOnly&&!v)return {color:"#666",weight:0,opacity:0,interactive:true};
-  return {color:routeColor(v,"#7b8794"),weight:v?7:3,opacity:v?1:.48,interactive:true};
-}
-const outsidePrimaryLayer=L.esri.featureLayer({
-  url:OUTSIDE_PRIMARY_URL,minZoom:7,maxZoom:19,style:outsideRoadStyle,
-  onEachFeature:(f,l)=>l.on("click",e=>externalRoadClicked("primary",f,l,e))
-}).addTo(map);
-const outsideMajorLayer=L.esri.featureLayer({
-  url:OUTSIDE_MAJOR_URL,minZoom:7,maxZoom:19,style:outsideRoadStyle,
-  onEachFeature:(f,l)=>l.on("click",e=>externalRoadClicked("major",f,l,e))
-}).addTo(map);
-const outsideSecondaryLayer=L.esri.featureLayer({
-  url:OUTSIDE_SECONDARY_URL,minZoom:9,maxZoom:19,style:outsideRoadStyle,
-  onEachFeature:(f,l)=>l.on("click",e=>externalRoadClicked("secondary",f,l,e))
-}).addTo(map);
-const outsideLocalLayer=L.esri.featureLayer({
-  url:OUTSIDE_LOCAL_URL,minZoom:10,maxZoom:19,style:outsideRoadStyle,
-  onEachFeature:(f,l)=>l.on("click",e=>externalRoadClicked("local",f,l,e))
-}).addTo(map);
-
-function outsidePlaceClicked(f,e){
-  if(!outsideTravelAllowed(e.latlng))return;
-  const p=f.properties||{},id=String(p.GEOID||p.GEOIDFQ||p.OBJECTID||p.OID),name=p.NAME||p.BASENAME||"Town / community";
-  select("town","census:"+id,name,"Town / community",e.latlng);
-}
-const outsidePlaceLayer=L.esri.featureLayer({
-  url:OUTSIDE_PLACE_URL,minZoom:8,maxZoom:19,
-  style:()=>({color:"#65717d",weight:1,fillColor:"#ffffff",fillOpacity:.01,interactive:true}),
-  onEachFeature:(f,l)=>l.on("click",e=>outsidePlaceClicked(f,e))
-}).addTo(map);
-const outsideCDPLayer=L.esri.featureLayer({
-  url:OUTSIDE_CDP_URL,minZoom:8,maxZoom:19,
-  style:()=>({color:"#65717d",weight:1,fillColor:"#ffffff",fillOpacity:.01,interactive:true}),
-  onEachFeature:(f,l)=>l.on("click",e=>outsidePlaceClicked(f,e))
-}).addTo(map);
-
-fetch(WV_BOUNDARY_URL+"/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson").then(r=>r.json()).then(g=>{
-  const feature=g.features?.[0];
-  if(!feature)return;
-  wvBoundary=feature;
-  outsideZone=turf.buffer(feature,100,{units:"miles"});
-  L.geoJSON(outsideZone,{style:{color:"#6f8799",weight:2,dashArray:"8 7",fillColor:"#9fb4c6",fillOpacity:.035,interactive:false}}).addTo(map);
-  refreshLayers();
-}).catch(()=>{});
 
 const countyLayer=L.esri.featureLayer({url:COUNTY_URL,where:"1=1",style:cstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.FIPS??p.CO_CODE??p.OBJECTID),name=p.NAME||"County";l.on("click",()=>select("county",id,name))}}).addTo(map);
 
@@ -258,17 +176,17 @@ map.on("zoomend",routeVisibility);
 const legend=L.control({position:"bottomleft"});legend.onAdd=function(){const d=L.DomUtil.create("div","map-legend");d.innerHTML='<b>Travel colors</b><div><i class="swatch" style="background:#e05a47"></i> Tim</div><div><i class="swatch" style="background:#2d6cdf"></i> Lori</div><div><i class="swatch" style="background:#7a3fb5"></i> Both — roads</div><div><span class="county" style="background:#9BE564"></span> Both — counties</div><div class="small">Gray = not visited</div>';return d};legend.addTo(map);
 routeVisibility();
 
-function select(kind,id,name,type,latlng){state.selected={kind,id,name,type};let x=document.createElement("div");x.innerHTML=`<div style="padding:8px 10px"><b>${name}</b><br><small>${kind==="county"?"County":type}</small><div class="actions" style="margin-top:8px"><button class="primary" onclick="mark('tim')">Tim</button><button class="primary" onclick="mark('lori')">Lori</button><button class="primary" onclick="mark('both')">Both</button><button onclick="clearMark()">Clear</button></div></div>`;L.popup().setLatLng(latlng||map.getCenter()).setContent(x).openOn(map)}
-window.mark=p=>{let s=state.selected;if(!s)return;let t=s.kind==="county"?state.counties:s.kind==="externalRoute"?state.externalRoutes:state.towns;t[s.id]={name:s.name,people:p,date:new Date().toISOString().slice(0,10)};save();refreshLayers();map.closePopup()}
-window.clearMark=()=>{let s=state.selected;if(!s)return;let t=s.kind==="county"?state.counties:s.kind==="externalRoute"?state.externalRoutes:state.towns;delete t[s.id];save();refreshLayers();map.closePopup()}
-function stats(){let vals=[...Object.values(state.counties),...Object.values(state.routes)],t=0,l=0;vals.forEach(v=>{if(people(v)==="tim"||people(v)==="both")t++;if(people(v)==="lori"||people(v)==="both")l++});document.getElementById("cc").textContent=Object.keys(state.counties).length+" / 55";document.getElementById("rc").textContent=Object.keys(state.routes).length;document.getElementById("erc").textContent=Object.keys(state.externalRoutes).length;document.getElementById("ntc").textContent=Object.keys(state.towns).length;document.getElementById("tc").textContent=t;document.getElementById("lc").textContent=l;renderParkStats()}
+function select(kind,id,name,type){state.selected={kind,id,name,type};let x=document.createElement("div");x.innerHTML=`<div style="padding:8px 10px"><b>${name}</b><br><small>${kind==="county"?"County":type}</small><div class="actions" style="margin-top:8px"><button class="primary" onclick="mark('tim')">Tim</button><button class="primary" onclick="mark('lori')">Lori</button><button class="primary" onclick="mark('both')">Both</button><button onclick="clearMark()">Clear</button></div></div>`;L.popup().setLatLng(map.getCenter()).setContent(x).openOn(map)}
+window.mark=p=>{let s=state.selected;if(!s)return;let t=s.kind==="county"?state.counties:state.routes;t[s.id]={name:s.name,people:p,date:new Date().toISOString().slice(0,10)};save();refreshLayers();map.closePopup()}
+window.clearMark=()=>{let s=state.selected;if(!s)return;delete (s.kind==="county"?state.counties:state.routes)[s.id];save();refreshLayers();map.closePopup()}
+function stats(){let vals=[...Object.values(state.counties),...Object.values(state.routes)],t=0,l=0;vals.forEach(v=>{if(people(v)==="tim"||people(v)==="both")t++;if(people(v)==="lori"||people(v)==="both")l++});document.getElementById("cc").textContent=Object.keys(state.counties).length+" / 55";document.getElementById("rc").textContent=Object.keys(state.routes).length;document.getElementById("tc").textContent=t;document.getElementById("lc").textContent=l;renderParkStats()}
 document.querySelectorAll(".tabs button[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button[data-tab]").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));document.getElementById(b.dataset.tab).classList.remove("hidden");if(b.dataset.tab==="maptab")setTimeout(()=>map.invalidateSize(),100)});
 document.getElementById("travelOnly").onclick=()=>{state.travelOnly=!state.travelOnly;save();refreshLayers()};
 document.getElementById("parkSelect").onchange=renderPark;
-document.getElementById("export").onclick=()=>{let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:3,exported:new Date().toISOString(),counties:state.counties,routes:state.routes,externalRoutes:state.externalRoutes,towns:state.towns,parks:state.parks},null,2)],{type:"application/json"}));a.download="tim-lori-wv-travel-backup.json";a.click()};
+document.getElementById("export").onclick=()=>{let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:2,exported:new Date().toISOString(),counties:state.counties,routes:state.routes,parks:state.parks},null,2)],{type:"application/json"}));a.download="tim-lori-wv-travel-backup.json";a.click()};
 document.getElementById("import").onclick=()=>document.getElementById("file").click();
-document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};state.externalRoutes=x.externalRoutes||{};state.towns=x.towns||{};state.parks=x.parks||{};save();refreshLayers();renderPark();alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
-document.getElementById("reset").onclick=()=>{if(confirm("Clear all travel markings, including state parks?")){state.counties={};state.routes={};state.externalRoutes={};state.towns={};state.parks={};save();refreshLayers();renderPark()}};
+document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};state.parks=x.parks||{};save();refreshLayers();renderPark();alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
+document.getElementById("reset").onclick=()=>{if(confirm("Clear all travel markings, including state parks?")){state.counties={};state.routes={};state.parks={};save();refreshLayers();renderPark()}};
 renderParkOptions();stats();refreshLayers();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]],{padding:[18,18]}),500);
 </script>
 </body></html>
