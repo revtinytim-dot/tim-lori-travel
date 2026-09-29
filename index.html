@@ -60,7 +60,7 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <div class="card"><b>🌿 Parks Tim & Lori Both Visited</b><div id="bothVisitedParks" class="note" style="margin-top:8px">No parks marked as visited by both yet.</div></div>
 <div class="card"><div class="note"><b>Park information source:</b> West Virginia State Parks. Lodging means the park currently lists cabins, a lodge, or another overnight stay. Restaurant status reflects an on-site dining operation listed by WV State Parks & Forests; hours and availability can change seasonally.</div></div>
 </section>
-<section id="backup" class="panel hidden"><div class="card"><b>App version</b><div class="note">State Parks + Forests + WV roads/counties + roads/towns within 100 miles outside WV • Tim red • Lori blue • Both purple/green • Build 2026-09-29</div></div>
+<section id="backup" class="panel hidden"><div class="card"><b>App version</b><div class="note">State Parks + Forests + WV roads/counties + roads/towns within 100 miles outside WV • Tim red • Lori blue • Both purple/green • Build 2026-09-29 • outside-area click system rebuilt</div></div>
 <div class="card"><b>Travel History Backup</b><p class="note">Your map markings are stored on this phone/browser. Export a backup occasionally so your travel history is safe.</p>
 <div class="actions"><button class="primary" id="export">Export Backup</button><button id="import">Import Backup</button><input id="file" type="file" accept=".json" hidden></div></div>
 <div class="card"><b>Clear all tracking</b><p class="note">This removes the markings stored on this device. Export a backup first.</p><button id="reset">Reset Tracking</button></div>
@@ -85,27 +85,77 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,att
 L.circle([38.65,-80.6],{radius:160934,color:"#6f8799",weight:1,dashArray:"6 8",fillOpacity:.025,interactive:false}).addTo(map);
 
 const WV_BOUNDARY_URL="https://gis.transportation.wv.gov/arcgis/rest/services/Boundaries/FeatureServer/2";
-const OUTSIDE_PRIMARY_URL="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Transportation_LargeScale/MapServer/0";
-const OUTSIDE_SECONDARY_URL="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Transportation_LargeScale/MapServer/1";
-const OUTSIDE_LOCAL_URL="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Transportation_LargeScale/MapServer/2";
-const TOWN_URL="https://services5.arcgis.com/bDCD6wpjQP5q0bHM/ArcGIS/rest/services/USA_Places/FeatureServer/0";
+const OUTSIDE_TRANSPORT_URL="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Transportation/MapServer";
+const OUTSIDE_PLACES_URL="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer";
 let wvBoundary=null,outsideZone=null;
 function outsideTravelAllowed(latlng){
   if(!outsideZone||!wvBoundary)return false;
   const pt=turf.point([latlng.lng,latlng.lat]);
   return turf.booleanPointInPolygon(pt,outsideZone) && !turf.booleanPointInPolygon(pt,wvBoundary);
 }
-function outsideRouteStyle(prefix,base){return f=>{const p=f.properties||{},id=String(p.OBJECTID??p.OID??p.GEOID??p.BASENAME??Math.random()),key=prefix+id,v=state.externalRoutes[key],inside=outsideZone?turf.booleanIntersects(f,outsideZone):true,c=v?(v.people==="tim"?"#e05a47":v.people==="lori"?"#2d6cdf":"#7a3fb5"):base;if(!inside|| (state.travelOnly&&!v))return{color:base,weight:0,opacity:0,interactive:false};return{color:c,weight:v?7:4,opacity:v?1:.48,interactive:true}}}
 function townStatus(i){const v=state.towns[i];return v?.people||null}
 function townIcon(i){const v=townStatus(i),c=v==="tim"?"#e05a47":v==="lori"?"#2d6cdf":v==="both"?"#7a3fb5":"#4b5563";return L.divIcon({className:"",html:`<div style="width:13px;height:13px;border-radius:50%;background:${c};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>`,iconSize:[13,13],iconAnchor:[6,6]})}
-function externalTownStyle(){return{}}
 
-const outsidePrimaryLayer=L.esri.featureLayer({url:OUTSIDE_PRIMARY_URL,style:outsideRouteStyle("primary:","#c9573e"),onEachFeature:(f,l)=>{const p=f.properties||{},id=String(p.OBJECTID??p.OID),name=p.NAME||p.BASENAME||"Primary Road";l.on("click",e=>{if(outsideTravelAllowed(e.latlng))select("externalRoute","primary:"+id,name,"Primary Road",e.latlng)})}}).addTo(map);
-const outsideSecondaryLayer=L.esri.featureLayer({url:OUTSIDE_SECONDARY_URL,style:outsideRouteStyle("secondary:","#9b8a72"),onEachFeature:(f,l)=>{const p=f.properties||{},id=String(p.OBJECTID??p.OID),name=p.NAME||p.BASENAME||"Secondary Road";l.on("click",e=>{if(outsideTravelAllowed(e.latlng))select("externalRoute","secondary:"+id,name,"Road outside WV",e.latlng)})}}).addTo(map);
-const outsideLocalLayer=L.esri.featureLayer({url:OUTSIDE_LOCAL_URL,style:outsideRouteStyle("local:","#aaa"),onEachFeature:(f,l)=>{const p=f.properties||{},id=String(p.OBJECTID??p.OID),name=p.NAME||p.BASENAME||"Local Road";l.on("click",e=>{if(outsideTravelAllowed(e.latlng))select("externalRoute","local:"+id,name,"Local Road outside WV",e.latlng)})}}).addTo(map);
-const townLayer=L.esri.featureLayer({url:TOWN_URL,where:"1=1",pointToLayer:(geo,latlng)=>L.marker(latlng,{icon:townIcon(String(geo.properties?.OBJECTID??geo.properties?.GEOID??latlng.lat+","+latlng.lng))}),onEachFeature:(f,l)=>{const p=f.properties||{},id=String(p.OBJECTID??p.GEOID),name=p.NAME||p.NAME10||"Town / community";l.setIcon(townIcon(id));l.bindTooltip(name,{permanent:false,direction:"top",offset:[0,-8]});l.on("click",e=>{if(outsideTravelAllowed(e.latlng))select("town",id,name,"Town / community",e.latlng)})}}).addTo(map);
+// Reliable surrounding-area map layers. Census TIGERweb provides nationwide
+// primary, secondary and local roads plus incorporated/census-designated places.
+// We use DynamicMapLayer + Identify so features remain clickable without trying
+// to download a huge nationwide FeatureServer into the browser.
+const outsideRoadLayer=L.esri.dynamicMapLayer({
+  url:OUTSIDE_TRANSPORT_URL,
+  layers:[0,1,2,3,4,5,6,7,8],
+  opacity:.58,
+  minZoom:6,
+  attribution:"U.S. Census Bureau TIGERweb"
+}).addTo(map);
+const outsidePlaceLayer=L.esri.dynamicMapLayer({
+  url:OUTSIDE_PLACES_URL,
+  layers:[4,5],
+  opacity:.08,
+  minZoom:7,
+  attribution:"U.S. Census Bureau TIGERweb"
+}).addTo(map);
 
-fetch(WV_BOUNDARY_URL+"/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson").then(r=>r.json()).then(g=>{const feature=g.features?.[0];if(!feature)return;wvBoundary=feature;outsideZone=turf.buffer(feature,100,{units:"miles"});L.geoJSON(outsideZone,{style:{color:"#6f8799",weight:2,dashArray:"8 7",fillColor:"#9fb4c6",fillOpacity:.035,interactive:false}}).addTo(map);refreshLayers()}).catch(()=>{});
+function identifyOutsideRoad(e){
+  if(!outsideTravelAllowed(e.latlng))return;
+  outsideRoadLayer.identify().on(map).at(e.latlng).layers("all:0,1,2,3,4,5,6,7,8").tolerance(8).run((err,fc)=>{
+    if(err||!fc?.features?.length)return;
+    const f=fc.features.find(x=>x.geometry?.type?.toLowerCase().includes("line"))||fc.features[0];
+    const p=f.properties||{};
+    const id=String(p.OBJECTID??p.OID??p.FID??p.GEOID??JSON.stringify(f.geometry).slice(0,100));
+    const name=p.NAME||p.FULLNAME||p.BASENAME||p.ROUTE||"Road outside West Virginia";
+    select("externalRoute","census:"+id,name,"Road outside WV",e.latlng);
+  });
+}
+function identifyOutsideTown(e){
+  if(!outsideTravelAllowed(e.latlng))return;
+  outsidePlaceLayer.identify().on(map).at(e.latlng).layers("all:4,5").tolerance(8).run((err,fc)=>{
+    if(err||!fc?.features?.length)return;
+    const f=fc.features[0],p=f.properties||{};
+    const id=String(p.GEOID||p.OBJECTID||p.OID);
+    const name=p.BASENAME||p.NAME||"Town / community";
+    select("town","census:"+id,name,"Town / community",e.latlng);
+  });
+}
+
+map.on("click",e=>{
+  if(!outsideTravelAllowed(e.latlng))return;
+  // A town/community gets priority. If none is found, the same click identifies a road.
+  outsidePlaceLayer.identify().on(map).at(e.latlng).layers("all:4,5").tolerance(8).run((err,fc)=>{
+    if(!err&&fc?.features?.length){
+      const f=fc.features[0],p=f.properties||{},id=String(p.GEOID||p.OBJECTID||p.OID),name=p.BASENAME||p.NAME||"Town / community";
+      select("town","census:"+id,name,"Town / community",e.latlng);
+    } else identifyOutsideRoad(e);
+  });
+});
+
+fetch(WV_BOUNDARY_URL+"/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson").then(r=>r.json()).then(g=>{
+  const feature=g.features?.[0];
+  if(!feature)return;
+  wvBoundary=feature;
+  outsideZone=turf.buffer(feature,100,{units:"miles"});
+  L.geoJSON(outsideZone,{style:{color:"#6f8799",weight:2,dashArray:"8 7",fillColor:"#9fb4c6",fillOpacity:.035,interactive:false}}).addTo(map);
+  refreshLayers();
+}).catch(()=>{});
 
 const countyLayer=L.esri.featureLayer({url:COUNTY_URL,where:"1=1",style:cstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.FIPS??p.CO_CODE??p.OBJECTID),name=p.NAME||"County";l.on("click",()=>select("county",id,name))}}).addTo(map);
 
@@ -187,11 +237,7 @@ window.markPark=(i,person)=>{
 window.clearPark=(i)=>{delete state.parks[String(i)];save();renderPark();renderParkStats()}
 function renderBothVisitedParks(){const box=document.getElementById("bothVisitedParks");const list=Object.entries(state.parks).filter(([i,v])=>v?.people==="both").sort((a,b)=>PARKS[Number(a[0])].name.localeCompare(PARKS[Number(b[0])].name));if(!list.length){box.innerHTML="No parks marked as visited by both yet.";return}box.innerHTML='<ul class="both-list">'+list.map(([i,v])=>`<li><span class="both-dot"></span><a href="#" onclick="openParkFromMap(${Number(i)});return false">${PARKS[Number(i)].name}</a><span class="muted">${PARKS[Number(i)].city}</span></li>`).join("")+'</ul>'}
 function renderParkStats(){const vals=Object.values(state.parks),t=vals.filter(v=>v?.people==="tim"||v?.people==="both").length,l=vals.filter(v=>v?.people==="lori"||v?.people==="both").length;document.getElementById("parkVisitedCount").textContent=vals.length+" / "+PARKS.length;document.getElementById("parkTimCount").textContent=t;document.getElementById("parkLoriCount").textContent=l;document.getElementById("pc").textContent=vals.length+" / "+PARKS.length;renderBothVisitedParks();renderParkMarkers()}
-function renderTownMarkers(){
-  if(!townLayer||!townLayer._layers)return;
-  Object.values(townLayer._layers).forEach(l=>{const id=l.feature?.properties?.OBJECTID??l.feature?.properties?.GEOID;if(id==null)return;const ll=l.getLatLng?.();const allowed=ll&&outsideTravelAllowed(ll);const visited=!!state.towns[String(id)];if(l.setIcon)l.setIcon(townIcon(String(id)));if(l.setOpacity)l.setOpacity(!allowed||(state.travelOnly&&!visited)?0:1);});
-}
-function refreshLayers(){countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);outsidePrimaryLayer.setStyle(outsideRouteStyle("primary:","#c9573e"));outsideSecondaryLayer.setStyle(outsideRouteStyle("secondary:","#9b8a72"));outsideLocalLayer.setStyle(outsideRouteStyle("local:","#aaa"));townLayer.eachFeature?.(()=>{});renderTownMarkers();routeVisibility();document.getElementById("travelOnly").classList.toggle("on",state.travelOnly);document.getElementById("travelOnly").textContent=state.travelOnly?"Show all roads & counties":"Show only our travels"}
+function refreshLayers(){countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);routeVisibility();document.getElementById("travelOnly").classList.toggle("on",state.travelOnly);document.getElementById("travelOnly").textContent=state.travelOnly?"Show all roads & counties":"Show only our travels"}
 function routeVisibility(){
   const z=map.getZoom();
   const showWV=z>=7.0;
