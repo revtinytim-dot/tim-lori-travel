@@ -1,6 +1,6 @@
 {
   "name": "Timmy & Lori's Travels",
-  "short_name": "Timmy & Lori Travels",
+  "short_name": "Timmy & Lori's Travels",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#eef2f5",

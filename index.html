@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>Tim & Lori's Travels</title>
+<title>Timmy & Lori's Travels</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#18212b;background:#eef2f5}
 header{background:#173b2c;color:#fff;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));position:sticky;top:0;z-index:1000}
@@ -19,19 +19,20 @@ h1{font-size:19px;margin:0}.sub{font-size:11px;opacity:.85;margin-top:2px}
 button,input,select{font:inherit}button{min-height:42px;cursor:pointer} .actions{display:flex;gap:7px;flex-wrap:wrap}.actions button{border:1px solid #cbd3da;background:#fff;border-radius:8px;padding:8px 11px;font-weight:700}.actions .primary{background:#1f6f4a;color:#fff;border-color:#1f6f4a}
 input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{font-size:12px;color:#66717d}.legend{display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:11px}.leg{display:flex;gap:6px;align-items:center}.sw{width:25px;height:5px;border-radius:5px}.county{width:22px;height:15px;border:2px solid #68737e;background:#f3f5f6}
 .hidden{display:none}.note{font-size:11px;line-height:1.45;color:#5f6872}
-.map-info,.map-legend{background:rgba(255,255,255,.94);padding:8px 10px;border:1px solid #cbd3da;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.15);font-size:11px;line-height:1.45}.map-info span{color:#58636e}.map-legend{margin:0 0 8px 8px}.map-legend div{margin-top:3px}.map-legend .small{color:#68737e}.swatch{display:inline-block;width:22px;height:6px;border-radius:4px;margin-right:5px;vertical-align:middle}
+.park-status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;background:#f0f2f4;color:#59636d}.park-status.tim{background:#f9ddd8;color:#8f2d22}.park-status.lori{background:#dce8fb;color:#244f9b}.park-status.both{background:#eadff7;color:#5b2a91}.park-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.park-grid .stat{min-width:0}.park-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.park-actions button{border:1px solid #cbd3da;background:#fff;border-radius:8px;padding:8px 11px;font-weight:700}.park-actions .tim{background:#e05a47;color:#fff;border-color:#e05a47}.park-actions .lori{background:#2d6cdf;color:#fff;border-color:#2d6cdf}.park-actions .both{background:#7b3fc6;color:#fff;border-color:#7b3fc6}.park-card h3{margin:0 0 6px}.park-card p{margin:6px 0}.park-link{display:inline-block;margin-top:8px;font-weight:700;color:#1f6f4a;text-decoration:none}.map-info,.map-legend{background:rgba(255,255,255,.94);padding:8px 10px;border:1px solid #cbd3da;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.15);font-size:11px;line-height:1.45}.map-info span{color:#58636e}.map-legend{margin:0 0 8px 8px}.map-legend div{margin-top:3px}.map-legend .small{color:#68737e}.swatch{display:inline-block;width:22px;height:6px;border-radius:4px;margin-right:5px;vertical-align:middle}
 </style>
 </head>
 <body>
 <header>
-<h1>Tim & Lori's Travels</h1><div class="sub">West Virginia & surrounding 100-mile area</div>
-<div class="tabs"><button class="active" data-tab="maptab">Map</button><button data-tab="progress">Progress</button><button data-tab="backup">Backup</button><button id="travelOnly" class="filterBtn" type="button">Show only our travels</button></div>
+<h1>Timmy & Lori's Travels</h1><div class="sub">West Virginia & surrounding 100-mile area</div>
+<div class="tabs"><button class="active" data-tab="maptab">Map</button><button data-tab="progress">Progress</button><button data-tab="parks">WV State Parks</button><button data-tab="backup">Backup</button><button id="travelOnly" class="filterBtn" type="button">Show only our travels</button></div>
 </header>
 <section id="maptab"><div id="map"></div></section>
 <section id="progress" class="panel hidden">
 <div class="card"><div class="stats">
 <div class="stat"><div class="num" id="cc">0 / 55</div><div class="label">WV counties</div></div>
 <div class="stat"><div class="num" id="rc">0</div><div class="label">route segments</div></div>
+<div class="stat"><div class="num" id="pc">0 / 36</div><div class="label">WV state parks</div></div>
 <div class="stat"><div class="num" id="tc">0</div><div class="label">Tim entries</div></div>
 <div class="stat"><div class="num" id="lc">0</div><div class="label">Lori entries</div></div>
 </div></div>
@@ -44,6 +45,17 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <div class="leg"><span class="sw" style="background:#6a3dad;height:8px"></span> Traveled</div>
 </div></div>
 </section>
+
+<section id="parks" class="panel hidden">
+<div class="card">
+<b>WV State Parks</b>
+<p class="note">Choose a park from the pull-down list to see where it is, the park phone number, lodging information, and whether there is an on-site restaurant. Mark the park when you and Lori visit.</p>
+<select id="parkSelect" aria-label="Choose a West Virginia state park"><option value="">Choose a park...</option></select>
+</div>
+<div id="parkDetails" class="card park-card"><div class="muted">Choose a park above.</div></div>
+<div class="card"><div class="stats"><div class="stat"><div class="num" id="parkVisitedCount">0 / 36</div><div class="label">parks visited</div></div><div class="stat"><div class="num" id="parkTimCount">0</div><div class="label">Tim visited</div></div><div class="stat"><div class="num" id="parkLoriCount">0</div><div class="label">Lori visited</div></div></div></div>
+<div class="card"><div class="note"><b>Park information source:</b> West Virginia State Parks. Lodging means the park currently lists cabins, a lodge, or another overnight stay. Restaurant status reflects an on-site dining operation listed by WV State Parks; hours and availability can change seasonally.</div></div>
+</section>
 <section id="backup" class="panel hidden">
 <div class="card"><b>Travel History Backup</b><p class="note">Your map markings are stored on this phone/browser. Export a backup occasionally so your travel history is safe.</p>
 <div class="actions"><button class="primary" id="export">Export Backup</button><button id="import">Import Backup</button><input id="file" type="file" accept=".json" hidden></div></div>
@@ -54,9 +66,9 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <script>
 const COUNTY_URL="https://gis.transportation.wv.gov/arcgis/rest/services/Base_Maps/WVDOT_Base_Map_WM/FeatureServer/31";
 const ROUTE_URL="https://gis.transportation.wv.gov/arcgis/rest/services/Base_Maps/RoadCache/FeatureServer/6";
-let state={counties:{},routes:{},selected:null,travelOnly:false};try{Object.assign(state,JSON.parse(localStorage.getItem("tlwv")||"{}"))}catch(e){}
+let state={counties:{},routes:{},parks:{},selected:null,travelOnly:false};try{Object.assign(state,JSON.parse(localStorage.getItem("tlwv")||"{}"))}catch(e){}
 state.travelOnly=!!state.travelOnly;
-state.counties ||= {};state.routes ||= {};
+state.counties ||= {};state.routes ||= {};state.parks ||= {};
 function save(){localStorage.setItem("tlwv",JSON.stringify(state));stats()}
 function people(v){return v?.people||"both"}
 function personColor(v){return !v?null:(people(v)==="tim"?"#e05a47":people(v)==="lori"?"#2d6cdf":"#7b3fc6")}
@@ -72,6 +84,52 @@ const stateRouteLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '3'
 const usRouteLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '2'",style:rstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.OBJECTID),name=p.Label||p.Route||"U.S. Route";l.on("click",()=>select("route",id,name,"U.S. Route"))}}).addTo(map);
 const interstateLayer=L.esri.featureLayer({url:ROUTE_URL,where:"SignSystem = '1'",style:rstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.OBJECTID),name=p.Label||p.Route||"Interstate";l.on("click",()=>select("route",id,name,"Interstate"))}}).addTo(map);
 
+const PARKS=[
+{name:"Audra State Park",city:"Buckhannon",address:"8397 Audra Park Rd, Buckhannon, WV 26201",phone:"304-457-1162",lodging:"Camping only",restaurant:"No",url:"https://wvstateparks.com/parks/audra-state-park/"},
+{name:"Babcock State Park",city:"Clifftop",address:"486 Babcock Road, Clifftop, WV 25831",phone:"304-438-3004",lodging:"Cabins and camping",restaurant:"No",url:"https://wvstateparks.com/parks/babcock-state-park/"},
+{name:"Beartown State Park",city:"Renick",address:"Beartown Road, Renick, WV 24966",phone:"304-799-4087",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/beartown-state-park/"},
+{name:"Beech Fork State Park",city:"Barboursville",address:"5601 Long Branch Rd, Barboursville, WV 25504",phone:"304-528-5794",lodging:"Cabins and camping",restaurant:"No",url:"https://wvstateparks.com/parks/beech-fork-state-park/"},
+{name:"Berkeley Springs State Park",city:"Berkeley Springs",address:"2 S. Washington St., Berkeley Springs, WV 25411",phone:"304-258-2711",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/berkeley-springs-state-park/"},
+{name:"Blackwater Falls State Park",city:"Davis",address:"1584 Blackwater Lodge Rd, Davis, WV 26260",phone:"304-259-5216",lodging:"Cabins, lodge and camping",restaurant:"Yes — Smokehouse",url:"https://wvstateparks.com/parks/blackwater-falls-state-park/"},
+{name:"Blennerhassett Island Historical State Park",city:"Parkersburg",address:"137 Juliana Street, Parkersburg, WV 26101",phone:"304-420-4800",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/blennerhassett-island-historical-state-park/"},
+{name:"Bluestone State Park",city:"Hinton",address:"2104 Bluestone Park Road, Hinton, WV 25951",phone:"304-466-2805",lodging:"Cabins and camping",restaurant:"No",url:"https://wvstateparks.com/parks/bluestone-state-park/"},
+{name:"Cacapon Resort State Park",city:"Berkeley Springs",address:"818 Cacapon Lodge Dr., Berkeley Springs, WV 25411",phone:"304-258-1022",lodging:"Cabins, lodge and unique stays",restaurant:"Yes — Prospects Restaurant",url:"https://wvstateparks.com/parks/cacapon-resort-state-park/"},
+{name:"Camp Creek State Park and Forest",city:"Camp Creek",address:"2390 Camp Creek Road, Camp Creek, WV 25820",phone:"304-425-9481",lodging:"Cabin/unique stay and camping",restaurant:"No",url:"https://wvstateparks.com/parks/camp-creek-state-park-and-forest/"},
+{name:"Canaan Valley Resort State Park",city:"Davis",address:"230 Main Lodge Rd, Davis, WV 26260",phone:"304-866-4121",lodging:"Cabins, lodge and camping",restaurant:"Yes — multiple on-site restaurants",url:"https://wvstateparks.com/parks/canaan-valley-resort-state-park/"},
+{name:"Carnifex Ferry Battlefield State Park",city:"Summersville",address:"1194 Carnifex Ferry Rd, Summersville, WV 26651",phone:"304-872-0825",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/carnifex-ferry-battlefield-state-park/"},
+{name:"Cass Scenic Railroad State Park",city:"Cass",address:"12363 Cass Road, Cass, WV 24927",phone:"304-456-4300",lodging:"Cabins and lodge",restaurant:"Yes — Shays Restaurant / Ellie May's",url:"https://wvstateparks.com/parks/cass-scenic-railroad-state-park/"},
+{name:"Cathedral State Park",city:"Aurora",address:"12 Cathedral Park Drive, Aurora, WV 26705",phone:"304-735-3771",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/cathedral-state-park/"},
+{name:"Cedar Creek State Park",city:"Glenville",address:"2947 Cedar Creek Rd., Glenville, WV 26351",phone:"304-462-8517",lodging:"Camping only",restaurant:"No",url:"https://wvstateparks.com/parks/cedar-creek-state-park/"},
+{name:"Chief Logan State Park",city:"Logan",address:"1000 Conference Center Drive, Logan, WV 25601",phone:"304-855-6100",lodging:"Lodge and camping",restaurant:"Yes — Whispering Ridge Dining Room",url:"https://wvstateparks.com/parks/chief-logan-state-park/"},
+{name:"Droop Mountain Battlefield State Park",city:"Hillsboro",address:"683 Droop Park Rd., Hillsboro, WV 24946",phone:"304-653-4254",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/droop-mountain-battlefield-state-park/"},
+{name:"Fairfax Stone State Park",city:"Davis",address:"1584 Blackwater Lodge Rd, Davis, WV 26260",phone:"304-259-5216",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/fairfax-stone-state-park/"},
+{name:"Hawks Nest State Park",city:"Ansted",address:"49 Hawks Nest Park Rd, Ansted, WV 25812",phone:"304-658-5212",lodging:"Lodge",restaurant:"Yes — The Overlook Restaurant",url:"https://wvstateparks.com/parks/hawks-nest-state-park/"},
+{name:"Holly River State Park",city:"Hacker Valley",address:"680 State Park Rd., Hacker Valley, WV 26222",phone:"304-493-6353",lodging:"Cabins and camping",restaurant:"Yes — The Cookhouse",url:"https://wvstateparks.com/parks/holly-river-state-park/"},
+{name:"Little Beaver State Park",city:"Beaver",address:"1402 Grandview Rd., Beaver, WV 25813",phone:"304-763-2494",lodging:"Cabins and camping",restaurant:"No",url:"https://wvstateparks.com/parks/little-beaver-state-park/"},
+{name:"Lost River State Park",city:"Mathias",address:"321 Park Drive, Mathias, WV 26812",phone:"304-897-5372",lodging:"Cabins and unique stays",restaurant:"No",url:"https://wvstateparks.com/parks/lost-river-state-park/"},
+{name:"Moncove Lake State Park",city:"Gap Mills",address:"695 Moncove Lake Access Rd, Gap Mills, WV 24941",phone:"304-772-3450",lodging:"Camping only",restaurant:"No",url:"https://wvstateparks.com/parks/moncove-lake-state-park/"},
+{name:"North Bend State Park",city:"Cairo",address:"202 North Bend State Park Road, Cairo, WV 26337",phone:"304-643-2931",lodging:"Cabins, lodge and camping",restaurant:"Yes — North Bend Restaurant",url:"https://wvstateparks.com/parks/north-bend-state-park/"},
+{name:"Pinnacle Rock State Park",city:"Bramwell",address:"6407 Coal Heritage Rd., Bramwell, WV 24715",phone:"304-425-9481",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/pinnacle-rock-state-park/"},
+{name:"Pipestem Resort State Park",city:"Pipestem",address:"3405 Pipestem Dr, Pipestem, WV 25979",phone:"304-466-1800",lodging:"Cabins, lodges and camping",restaurant:"Yes — multiple restaurants",url:"https://wvstateparks.com/parks/pipestem-state-park/"},
+{name:"Prickett's Fort State Park",city:"Fairmont",address:"88 State Park Road, Fairmont, WV 26554",phone:"304-363-3030",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/pricketts-fort-state-park/"},
+{name:"Stonewall Resort State Park",city:"Roanoke",address:"940 Resort Dr, Roanoke, WV 26447",phone:"304-269-7400",lodging:"Cabins, lodge and camping",restaurant:"Yes — multiple restaurants",url:"https://wvstateparks.com/parks/stonewall-resort-state-park/"},
+{name:"Summersville Lake State Park",city:"Summersville",address:"36 Park Road, Summersville, WV 26651",phone:"681-355-0328",lodging:"No cabins/lodge listed; recreation-focused park",restaurant:"No",url:"https://wvstateparks.com/parks/summersville-lake-state-park/"},
+{name:"Tomlinson Run State Park",city:"New Manchester",address:"84 Osage Road, New Manchester, WV 26056",phone:"304-564-3651",lodging:"Camping and unique stays",restaurant:"No",url:"https://wvstateparks.com/parks/tomlinson-run-state-park/"},
+{name:"Tu-Endie-Wei State Park",city:"Point Pleasant",address:"#1 Main Street, Point Pleasant, WV 25550",phone:"304-675-0869",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/tu-endie-wei-state-park/"},
+{name:"Twin Falls Resort State Park",city:"Mullens",address:"Route 97, Mullens, WV 25882",phone:"304-294-4000",lodging:"Cabins, lodge and camping",restaurant:"Yes — Twin Falls Restaurant",url:"https://wvstateparks.com/parks/twin-falls-resort-state-park/"},
+{name:"Tygart Lake State Park",city:"Grafton",address:"1240 Paul E. Malone Rd, Grafton, WV 26354",phone:"304-265-6144",lodging:"Cabins, lodge and camping",restaurant:"Yes — The Lodge Restaurant",url:"https://wvstateparks.com/parks/tygart-lake-state-park/"},
+{name:"Valley Falls State Park",city:"Fairmont",address:"720 Valley Falls Rd., Fairmont, WV 26554",phone:"304-367-2719",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/valley-falls-state-park/"},
+{name:"Watoga State Park",city:"Marlinton",address:"4800 Watoga Park Rd., Marlinton, WV 24954",phone:"304-799-4087",lodging:"Cabins and camping",restaurant:"No",url:"https://wvstateparks.com/parks/watoga-state-park/"},
+{name:"Watters Smith Memorial State Park",city:"Lost Creek",address:"831 RR 3, Duck Creek Rd., Lost Creek, WV 26385",phone:"304-745-3081",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/watters-smith-memorial-state-park/"}
+];
+function parkPeople(id){return state.parks[id]?.people||null}
+function parkStatusText(v){return !v?"Not visited":people(v)==="tim"?"Tim visited":people(v)==="lori"?"Lori visited":"Both visited"}
+function parkStatusClass(v){return !v?"":people(v)}
+function renderParkOptions(){const sel=document.getElementById("parkSelect");sel.innerHTML='<option value="">Choose a park...</option>'+PARKS.map((p,i)=>`<option value="${i}">${p.name}</option>`).join("")}
+function renderPark(){const sel=document.getElementById("parkSelect"),box=document.getElementById("parkDetails"),i=Number(sel.value);if(!Number.isInteger(i)||!PARKS[i]){box.innerHTML='<div class="muted">Choose a park above.</div>';return}const p=PARKS[i],v=parkPeople(i);box.innerHTML=`<h3>${p.name} <span class="park-status ${parkStatusClass(v)}">${parkStatusText(v)}</span></h3><p><b>Location:</b> ${p.city}, West Virginia</p><p><b>Address:</b> ${p.address}</p><p><b>Phone:</b> <a href="tel:${p.phone.replace(/[^0-9]/g,'')}">${p.phone}</a></p><p><b>Cabins / lodging:</b> ${p.lodging}</p><p><b>On-site restaurant:</b> ${p.restaurant}</p><div class="park-actions"><button class="tim" onclick="markPark(${i},'tim')">Tim</button><button class="lori" onclick="markPark(${i},'lori')">Lori</button><button class="both" onclick="markPark(${i},'both')">Both</button><button onclick="clearPark(${i})">Clear</button></div><a class="park-link" href="${p.url}" target="_blank" rel="noopener">Official park information ↗</a> <a class="park-link" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.address)}" target="_blank" rel="noopener">Open in map ↗</a>`}
+window.markPark=(i,p)=>{state.parks[String(i)]={name:PARKS[i].name,people:p,date:new Date().toISOString().slice(0,10)};save();renderPark();renderParkStats()}
+window.clearPark=(i)=>{delete state.parks[String(i)];save();renderPark();renderParkStats()}
+function renderParkStats(){const vals=Object.values(state.parks),t=vals.filter(v=>people(v)==="tim"||people(v)==="both").length,l=vals.filter(v=>people(v)==="lori"||people(v)==="both").length;document.getElementById("parkVisitedCount").textContent=vals.length+" / "+PARKS.length;document.getElementById("parkTimCount").textContent=t;document.getElementById("parkLoriCount").textContent=l;document.getElementById("pc").textContent=vals.length+" / "+PARKS.length}
 function refreshLayers(){countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);routeVisibility();document.getElementById("travelOnly").classList.toggle("on",state.travelOnly);document.getElementById("travelOnly").textContent=state.travelOnly?"Show all roads & counties":"Show only our travels"}
 function routeVisibility(){
   const z=map.getZoom();
@@ -90,12 +148,14 @@ routeVisibility();
 function select(kind,id,name,type){state.selected={kind,id,name,type};let x=document.createElement("div");x.innerHTML=`<div style="padding:8px 10px"><b>${name}</b><br><small>${kind==="county"?"County":type}</small><div class="actions" style="margin-top:8px"><button class="primary" onclick="mark('tim')">Tim</button><button class="primary" onclick="mark('lori')">Lori</button><button class="primary" onclick="mark('both')">Both</button><button onclick="clearMark()">Clear</button></div></div>`;L.popup().setLatLng(map.getCenter()).setContent(x).openOn(map)}
 window.mark=p=>{let s=state.selected;if(!s)return;let t=s.kind==="county"?state.counties:state.routes;t[s.id]={name:s.name,people:p,date:new Date().toISOString().slice(0,10)};save();refreshLayers();map.closePopup()}
 window.clearMark=()=>{let s=state.selected;if(!s)return;delete (s.kind==="county"?state.counties:state.routes)[s.id];save();refreshLayers();map.closePopup()}
-function stats(){let vals=[...Object.values(state.counties),...Object.values(state.routes)],t=0,l=0;vals.forEach(v=>{if(people(v)==="tim"||people(v)==="both")t++;if(people(v)==="lori"||people(v)==="both")l++});document.getElementById("cc").textContent=Object.keys(state.counties).length+" / 55";document.getElementById("rc").textContent=Object.keys(state.routes).length;document.getElementById("tc").textContent=t;document.getElementById("lc").textContent=l}
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));document.getElementById(b.dataset.tab).classList.remove("hidden");if(b.dataset.tab==="maptab")setTimeout(()=>map.invalidateSize(),100)});
-document.getElementById("export").onclick=()=>{let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),counties:state.counties,routes:state.routes},null,2)],{type:"application/json"}));a.download="tim-lori-wv-travel-backup.json";a.click()};
+function stats(){let vals=[...Object.values(state.counties),...Object.values(state.routes)],t=0,l=0;vals.forEach(v=>{if(people(v)==="tim"||people(v)==="both")t++;if(people(v)==="lori"||people(v)==="both")l++});document.getElementById("cc").textContent=Object.keys(state.counties).length+" / 55";document.getElementById("rc").textContent=Object.keys(state.routes).length;document.getElementById("tc").textContent=t;document.getElementById("lc").textContent=l;renderParkStats()}
+document.querySelectorAll(".tabs button[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button[data-tab]").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));document.getElementById(b.dataset.tab).classList.remove("hidden");if(b.dataset.tab==="maptab")setTimeout(()=>map.invalidateSize(),100)});
+document.getElementById("travelOnly").onclick=()=>{state.travelOnly=!state.travelOnly;save();refreshLayers()};
+document.getElementById("parkSelect").onchange=renderPark;
+document.getElementById("export").onclick=()=>{let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify({version:2,exported:new Date().toISOString(),counties:state.counties,routes:state.routes,parks:state.parks},null,2)],{type:"application/json"}));a.download="tim-lori-wv-travel-backup.json";a.click()};
 document.getElementById("import").onclick=()=>document.getElementById("file").click();
-document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};save();refreshLayers();alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
-document.getElementById("reset").onclick=()=>{if(confirm("Clear all travel markings?")){state.counties={};state.routes={};save();refreshLayers()}};
-stats();refreshLayers();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]],{padding:[18,18]}),500);
+document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};state.parks=x.parks||{};save();refreshLayers();renderPark();alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
+document.getElementById("reset").onclick=()=>{if(confirm("Clear all travel markings, including state parks?")){state.counties={};state.routes={};state.parks={};save();refreshLayers();renderPark()}};
+renderParkOptions();stats();refreshLayers();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]],{padding:[18,18]}),500);
 </script>
 </body></html>
