@@ -125,12 +125,15 @@ const PARKS=[
 {name:"Watoga State Park",city:"Marlinton",address:"4800 Watoga Park Rd., Marlinton, WV 24954",phone:"304-799-4087",lodging:"Cabins and camping",restaurant:"No",url:"https://wvstateparks.com/parks/watoga-state-park/",lat:38.114,lng:-80.15},
 {name:"Watters Smith Memorial State Park",city:"Lost Creek",address:"831 RR 3, Duck Creek Rd., Lost Creek, WV 26385",phone:"304-745-3081",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/watters-smith-memorial-state-park/",lat:39.104,lng:-80.454}
 ];
-function parkPeople(id){return state.parks[id]?.people||null}
-function parkStatusText(v){return !v?"Not visited":people(v)==="tim"?"Tim visited":people(v)==="lori"?"Lori visited":"Both visited"}
-function parkStatusClass(v){return !v?"":people(v)}
+function parkPeople(id){
+  const v=state.parks[String(id)];
+  return v && (v.people === "tim" || v.people === "lori" || v.people === "both") ? v.people : null;
+}
+function parkStatusText(v){return !v?"Not visited":v==="tim"?"Tim visited":v==="lori"?"Lori visited":"Both visited"}
+function parkStatusClass(v){return v||""}
 
 const parkMarkersLayer=L.layerGroup().addTo(map);
-function parkMarkerStatus(i){const v=parkPeople(i);return v?people(v):"unvisited"}
+function parkMarkerStatus(i){const v=parkPeople(i);return v||"unvisited"}
 function parkIcon(i){const cls=parkMarkerStatus(i);return L.divIcon({className:"",html:`<div class="park-marker ${cls}"><span>★</span></div>`,iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-25]})}
 function renderParkMarkers(){
   parkMarkersLayer.clearLayers();
@@ -147,10 +150,16 @@ window.openParkFromMap=i=>{document.querySelectorAll(".tabs button[data-tab]").f
 
 function renderParkOptions(){const sel=document.getElementById("parkSelect");sel.innerHTML='<option value="">Choose a park...</option>'+PARKS.map((p,i)=>`<option value="${i}">${p.name}</option>`).join("")}
 function renderPark(){const sel=document.getElementById("parkSelect"),box=document.getElementById("parkDetails"),i=Number(sel.value);if(!Number.isInteger(i)||!PARKS[i]){box.innerHTML='<div class="muted">Choose a park above.</div>';return}const p=PARKS[i],v=parkPeople(i);box.innerHTML=`<h3>${p.name} <span class="park-status ${parkStatusClass(v)}">${parkStatusText(v)}</span></h3><p><b>Location:</b> ${p.city}, West Virginia</p><p><b>Address:</b> ${p.address}</p><p><b>Phone:</b> <a href="tel:${p.phone.replace(/[^0-9]/g,'')}">${p.phone}</a></p><p><b>Cabins / lodging:</b> ${p.lodging}</p><p><b>On-site restaurant:</b> ${p.restaurant}</p><div class="park-actions"><button class="tim" onclick="markPark(${i},'tim')">Tim</button><button class="lori" onclick="markPark(${i},'lori')">Lori</button><button class="both" onclick="markPark(${i},'both')">Both</button><button onclick="clearPark(${i})">Clear</button></div><a class="park-link" href="${p.url}" target="_blank" rel="noopener">Official park information ↗</a> <a class="park-link" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.address)}" target="_blank" rel="noopener">Open in map ↗</a>`}
-window.markPark=(i,p)=>{state.parks[String(i)]={name:PARKS[i].name,people:p,date:new Date().toISOString().slice(0,10)};save();renderPark();renderParkStats()}
+window.markPark=(i,person)=>{
+  if(!PARKS[i] || !["tim","lori","both"].includes(person)) return;
+  state.parks[String(i)]={name:PARKS[i].name,people:person,date:new Date().toISOString().slice(0,10)};
+  save();
+  renderPark();
+  renderParkStats();
+}
 window.clearPark=(i)=>{delete state.parks[String(i)];save();renderPark();renderParkStats()}
-function renderBothVisitedParks(){const box=document.getElementById("bothVisitedParks");const list=Object.entries(state.parks).filter(([i,v])=>people(v)==="both").sort((a,b)=>PARKS[Number(a[0])].name.localeCompare(PARKS[Number(b[0])].name));if(!list.length){box.innerHTML="No parks marked as visited by both yet.";return}box.innerHTML='<ul class="both-list">'+list.map(([i,v])=>`<li><span class="both-dot"></span><a href="#" onclick="openParkFromMap(${Number(i)});return false">${PARKS[Number(i)].name}</a><span class="muted">${PARKS[Number(i)].city}</span></li>`).join("")+'</ul>'}
-function renderParkStats(){const vals=Object.values(state.parks),t=vals.filter(v=>people(v)==="tim"||people(v)==="both").length,l=vals.filter(v=>people(v)==="lori"||people(v)==="both").length;document.getElementById("parkVisitedCount").textContent=vals.length+" / "+PARKS.length;document.getElementById("parkTimCount").textContent=t;document.getElementById("parkLoriCount").textContent=l;document.getElementById("pc").textContent=vals.length+" / "+PARKS.length;renderBothVisitedParks();renderParkMarkers()}
+function renderBothVisitedParks(){const box=document.getElementById("bothVisitedParks");const list=Object.entries(state.parks).filter(([i,v])=>v?.people==="both").sort((a,b)=>PARKS[Number(a[0])].name.localeCompare(PARKS[Number(b[0])].name));if(!list.length){box.innerHTML="No parks marked as visited by both yet.";return}box.innerHTML='<ul class="both-list">'+list.map(([i,v])=>`<li><span class="both-dot"></span><a href="#" onclick="openParkFromMap(${Number(i)});return false">${PARKS[Number(i)].name}</a><span class="muted">${PARKS[Number(i)].city}</span></li>`).join("")+'</ul>'}
+function renderParkStats(){const vals=Object.values(state.parks),t=vals.filter(v=>v?.people==="tim"||v?.people==="both").length,l=vals.filter(v=>v?.people==="lori"||v?.people==="both").length;document.getElementById("parkVisitedCount").textContent=vals.length+" / "+PARKS.length;document.getElementById("parkTimCount").textContent=t;document.getElementById("parkLoriCount").textContent=l;document.getElementById("pc").textContent=vals.length+" / "+PARKS.length;renderBothVisitedParks();renderParkMarkers()}
 function refreshLayers(){countyLayer.setStyle(cstyle);stateRouteLayer.setStyle(rstyle);usRouteLayer.setStyle(rstyle);interstateLayer.setStyle(rstyle);routeVisibility();document.getElementById("travelOnly").classList.toggle("on",state.travelOnly);document.getElementById("travelOnly").textContent=state.travelOnly?"Show all roads & counties":"Show only our travels"}
 function routeVisibility(){
   const z=map.getZoom();
