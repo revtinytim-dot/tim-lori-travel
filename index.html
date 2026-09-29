@@ -89,64 +89,70 @@ const OUTSIDE_TRANSPORT_URL="https://tigerweb.geo.census.gov/arcgis/rest/service
 const OUTSIDE_PLACES_URL="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer";
 let wvBoundary=null,outsideZone=null;
 function outsideTravelAllowed(latlng){
-  if(!outsideZone||!wvBoundary)return false;
   const pt=turf.point([latlng.lng,latlng.lat]);
-  return turf.booleanPointInPolygon(pt,outsideZone) && !turf.booleanPointInPolygon(pt,wvBoundary);
+  if(outsideZone&&wvBoundary) return turf.booleanPointInPolygon(pt,outsideZone) && !turf.booleanPointInPolygon(pt,wvBoundary);
+  // Fallback while the WV boundary request is loading: use a broad 100-mile-ish
+  // surrounding envelope so outside roads remain clickable rather than disabled.
+  return latlng.lat>=35.6&&latlng.lat<=42.2&&latlng.lng>=-85.5&&latlng.lng<=-74.5;
 }
 function townStatus(i){const v=state.towns[i];return v?.people||null}
 function townIcon(i){const v=townStatus(i),c=v==="tim"?"#e05a47":v==="lori"?"#2d6cdf":v==="both"?"#7a3fb5":"#4b5563";return L.divIcon({className:"",html:`<div style="width:13px;height:13px;border-radius:50%;background:${c};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>`,iconSize:[13,13],iconAnchor:[6,6]})}
 
-// Reliable surrounding-area map layers. Census TIGERweb provides nationwide
-// primary, secondary and local roads plus incorporated/census-designated places.
-// We use DynamicMapLayer + Identify so features remain clickable without trying
-// to download a huge nationwide FeatureServer into the browser.
-const outsideRoadLayer=L.esri.dynamicMapLayer({
-  url:OUTSIDE_TRANSPORT_URL,
-  layers:[0,1,2,3,4,5,6,7,8],
-  opacity:.58,
-  minZoom:6,
-  attribution:"U.S. Census Bureau TIGERweb"
+// Reliable surrounding-area layers. Census TIGERweb exposes real Feature Layers for
+// primary/secondary/local roads and places. Using FeatureLayers (rather than trying
+// to identify a rendered map image) gives every road/place a real Leaflet click event.
+const OUTSIDE_PRIMARY_URL=OUTSIDE_TRANSPORT_URL+"/2";
+const OUTSIDE_MAJOR_URL=OUTSIDE_TRANSPORT_URL+"/3";
+const OUTSIDE_SECONDARY_URL=OUTSIDE_TRANSPORT_URL+"/6";
+const OUTSIDE_LOCAL_URL=OUTSIDE_TRANSPORT_URL+"/8";
+const OUTSIDE_PLACE_URL=OUTSIDE_PLACES_URL+"/4";
+const OUTSIDE_CDP_URL=OUTSIDE_PLACES_URL+"/5";
+
+function outsideRoadAllowed(e){return outsideTravelAllowed(e.latlng)}
+function externalRoadClicked(kind,f,l,e){
+  if(!outsideRoadAllowed(e))return;
+  const p=f.properties||{};
+  const id=String(p.OBJECTID??p.OID??p.GEOID??p.FID);
+  const name=p.NAME||p.BASENAME||p.FULLNAME||"Road outside West Virginia";
+  select("externalRoute","census:"+kind+":"+id,name,"Road outside WV",e.latlng);
+}
+function outsideRoadStyle(f){
+  const p=f.properties||{},id=String(p.OBJECTID??p.OID??p.GEOID??p.FID),v=state.externalRoutes["census:"+id]||state.externalRoutes["census:primary:"+id]||state.externalRoutes["census:major:"+id]||state.externalRoutes["census:secondary:"+id]||state.externalRoutes["census:local:"+id];
+  if(state.travelOnly&&!v)return {color:"#666",weight:0,opacity:0,interactive:true};
+  return {color:routeColor(v,"#7b8794"),weight:v?7:3,opacity:v?1:.48,interactive:true};
+}
+const outsidePrimaryLayer=L.esri.featureLayer({
+  url:OUTSIDE_PRIMARY_URL,minZoom:7,maxZoom:19,style:outsideRoadStyle,
+  onEachFeature:(f,l)=>l.on("click",e=>externalRoadClicked("primary",f,l,e))
 }).addTo(map);
-const outsidePlaceLayer=L.esri.dynamicMapLayer({
-  url:OUTSIDE_PLACES_URL,
-  layers:[4,5],
-  opacity:.08,
-  minZoom:7,
-  attribution:"U.S. Census Bureau TIGERweb"
+const outsideMajorLayer=L.esri.featureLayer({
+  url:OUTSIDE_MAJOR_URL,minZoom:7,maxZoom:19,style:outsideRoadStyle,
+  onEachFeature:(f,l)=>l.on("click",e=>externalRoadClicked("major",f,l,e))
+}).addTo(map);
+const outsideSecondaryLayer=L.esri.featureLayer({
+  url:OUTSIDE_SECONDARY_URL,minZoom:9,maxZoom:19,style:outsideRoadStyle,
+  onEachFeature:(f,l)=>l.on("click",e=>externalRoadClicked("secondary",f,l,e))
+}).addTo(map);
+const outsideLocalLayer=L.esri.featureLayer({
+  url:OUTSIDE_LOCAL_URL,minZoom:10,maxZoom:19,style:outsideRoadStyle,
+  onEachFeature:(f,l)=>l.on("click",e=>externalRoadClicked("local",f,l,e))
 }).addTo(map);
 
-function identifyOutsideRoad(e){
+function outsidePlaceClicked(f,e){
   if(!outsideTravelAllowed(e.latlng))return;
-  outsideRoadLayer.identify().on(map).at(e.latlng).layers("all:0,1,2,3,4,5,6,7,8").tolerance(8).run((err,fc)=>{
-    if(err||!fc?.features?.length)return;
-    const f=fc.features.find(x=>x.geometry?.type?.toLowerCase().includes("line"))||fc.features[0];
-    const p=f.properties||{};
-    const id=String(p.OBJECTID??p.OID??p.FID??p.GEOID??JSON.stringify(f.geometry).slice(0,100));
-    const name=p.NAME||p.FULLNAME||p.BASENAME||p.ROUTE||"Road outside West Virginia";
-    select("externalRoute","census:"+id,name,"Road outside WV",e.latlng);
-  });
+  const p=f.properties||{},id=String(p.GEOID||p.GEOIDFQ||p.OBJECTID||p.OID),name=p.NAME||p.BASENAME||"Town / community";
+  select("town","census:"+id,name,"Town / community",e.latlng);
 }
-function identifyOutsideTown(e){
-  if(!outsideTravelAllowed(e.latlng))return;
-  outsidePlaceLayer.identify().on(map).at(e.latlng).layers("all:4,5").tolerance(8).run((err,fc)=>{
-    if(err||!fc?.features?.length)return;
-    const f=fc.features[0],p=f.properties||{};
-    const id=String(p.GEOID||p.OBJECTID||p.OID);
-    const name=p.BASENAME||p.NAME||"Town / community";
-    select("town","census:"+id,name,"Town / community",e.latlng);
-  });
-}
-
-map.on("click",e=>{
-  if(!outsideTravelAllowed(e.latlng))return;
-  // A town/community gets priority. If none is found, the same click identifies a road.
-  outsidePlaceLayer.identify().on(map).at(e.latlng).layers("all:4,5").tolerance(8).run((err,fc)=>{
-    if(!err&&fc?.features?.length){
-      const f=fc.features[0],p=f.properties||{},id=String(p.GEOID||p.OBJECTID||p.OID),name=p.BASENAME||p.NAME||"Town / community";
-      select("town","census:"+id,name,"Town / community",e.latlng);
-    } else identifyOutsideRoad(e);
-  });
-});
+const outsidePlaceLayer=L.esri.featureLayer({
+  url:OUTSIDE_PLACE_URL,minZoom:8,maxZoom:19,
+  style:()=>({color:"#65717d",weight:1,fillColor:"#ffffff",fillOpacity:.01,interactive:true}),
+  onEachFeature:(f,l)=>l.on("click",e=>outsidePlaceClicked(f,e))
+}).addTo(map);
+const outsideCDPLayer=L.esri.featureLayer({
+  url:OUTSIDE_CDP_URL,minZoom:8,maxZoom:19,
+  style:()=>({color:"#65717d",weight:1,fillColor:"#ffffff",fillOpacity:.01,interactive:true}),
+  onEachFeature:(f,l)=>l.on("click",e=>outsidePlaceClicked(f,e))
+}).addTo(map);
 
 fetch(WV_BOUNDARY_URL+"/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson").then(r=>r.json()).then(g=>{
   const feature=g.features?.[0];
