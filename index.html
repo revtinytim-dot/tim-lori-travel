@@ -33,7 +33,7 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <div class="card"><div class="stats">
 <div class="stat"><div class="num" id="cc">0 / 55</div><div class="label">WV counties</div></div>
 <div class="stat"><div class="num" id="rc">0</div><div class="label">route segments</div></div>
-<div class="stat"><div class="num" id="pc">0 / 36</div><div class="label">WV state parks</div></div>
+<div class="stat"><div class="num" id="pc">0 / 37</div><div class="label">WV parks & forests</div></div>
 <div class="stat"><div class="num" id="tc">0</div><div class="label">Tim entries</div></div>
 <div class="stat"><div class="num" id="lc">0</div><div class="label">Lori entries</div></div>
 </div></div>
@@ -54,7 +54,7 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <select id="parkSelect" aria-label="Choose a West Virginia state park"><option value="">Choose a park...</option></select>
 </div>
 <div id="parkDetails" class="card park-card"><div class="muted">Choose a park above.</div></div>
-<div class="card"><div class="stats"><div class="stat"><div class="num" id="parkVisitedCount">0 / 36</div><div class="label">parks visited</div></div><div class="stat"><div class="num" id="parkTimCount">0</div><div class="label">Tim visited</div></div><div class="stat"><div class="num" id="parkLoriCount">0</div><div class="label">Lori visited</div></div></div></div>
+<div class="card"><div class="stats"><div class="stat"><div class="num" id="parkVisitedCount">0 / 37</div><div class="label">parks visited</div></div><div class="stat"><div class="num" id="parkTimCount">0</div><div class="label">Tim visited</div></div><div class="stat"><div class="num" id="parkLoriCount">0</div><div class="label">Lori visited</div></div></div></div>
 <div class="card"><b>🌿 Parks Tim & Lori Both Visited</b><div id="bothVisitedParks" class="note" style="margin-top:8px">No parks marked as visited by both yet.</div></div>
 <div class="card"><div class="note"><b>Park information source:</b> West Virginia State Parks. Lodging means the park currently lists cabins, a lodge, or another overnight stay. Restaurant status reflects an on-site dining operation listed by WV State Parks & Forests; hours and availability can change seasonally.</div></div>
 </section>
@@ -77,8 +77,8 @@ function personColor(v){return !v?null:(people(v)==="tim"?"#e05a47":people(v)===
 function cstyle(f){let id=String(f.properties.FIPS??f.properties.CO_CODE??f.properties.OBJECTID),v=state.counties[id],c=personColor(v);if(state.travelOnly && !v)return{color:"#68737e",weight:0,fillColor:"#f3f5f6",fillOpacity:0};if(c==="#9BE564")return{color:"#68737e",weight:2,fillColor:"#9BE564",fillOpacity:.62};return{color:c||"#68737e",weight:c?3:1,fillColor:c||"#f3f5f6",fillOpacity:c?.62:.12}}
 function routeColor(v,fallback){return !v?fallback:(people(v)==="tim"?"#e05a47":people(v)==="lori"?"#2d6cdf":"#7a3fb5")}
 function rstyle(f){let p=f.properties||{},v=state.routes[String(p.OBJECTID)],s=String(p.SignSystem),c=s==="1"?"#2458a6":s==="2"?"#d66b6b":"#777";if(state.travelOnly && !v)return{color:c,weight:0,opacity:0};return{color:routeColor(v,c),weight:v?8:(s==="1"?6:5),opacity:v?1:(s==="1"?.9:.65),interactive:true}}
-const map=L.map("map",{zoomControl:false}).setView([38.65,-80.6],7.6);L.control.zoom({position:"bottomright"}).addTo(map);
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"© Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community"}).addTo(map);
+const map=L.map("map",{zoomControl:false,preferCanvas:true}).setView([38.65,-80.6],7.6);L.control.zoom({position:"bottomright"}).addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
 L.circle([38.65,-80.6],{radius:160934,color:"#6f8799",weight:1,dashArray:"6 8",fillOpacity:.025,interactive:false}).addTo(map);
 
 const countyLayer=L.esri.featureLayer({url:COUNTY_URL,where:"1=1",style:cstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.FIPS??p.CO_CODE??p.OBJECTID),name=p.NAME||"County";l.on("click",()=>select("county",id,name))}}).addTo(map);
