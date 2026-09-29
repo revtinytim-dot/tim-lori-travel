@@ -26,7 +26,7 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <body>
 <header>
 <h1>Timmy & Lori's Travels</h1><div class="sub">West Virginia & surrounding 100-mile area</div>
-<div class="tabs"><button class="active" data-tab="maptab">Map</button><button data-tab="progress">Progress</button><button data-tab="parks">WV State Parks</button><button data-tab="backup">Backup</button><button id="travelOnly" class="filterBtn" type="button">Show only our travels</button></div>
+<div class="tabs"><button class="active" data-tab="maptab">Map</button><button data-tab="progress">Progress</button><button data-tab="parks">WV State Parks & Forests</button><button data-tab="backup">Backup</button><button id="travelOnly" class="filterBtn" type="button">Show only our travels</button></div>
 </header>
 <section id="maptab"><div id="map"></div></section>
 <section id="progress" class="panel hidden">
@@ -49,14 +49,14 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 
 <section id="parks" class="panel hidden">
 <div class="card">
-<b>WV State Parks</b>
+<b>WV State Parks & Forests</b>
 <p class="note">Choose a park from the pull-down list to see where it is, the park phone number, lodging information, and whether there is an on-site restaurant. Mark the park when you and Lori visit.</p>
 <select id="parkSelect" aria-label="Choose a West Virginia state park"><option value="">Choose a park...</option></select>
 </div>
 <div id="parkDetails" class="card park-card"><div class="muted">Choose a park above.</div></div>
 <div class="card"><div class="stats"><div class="stat"><div class="num" id="parkVisitedCount">0 / 36</div><div class="label">parks visited</div></div><div class="stat"><div class="num" id="parkTimCount">0</div><div class="label">Tim visited</div></div><div class="stat"><div class="num" id="parkLoriCount">0</div><div class="label">Lori visited</div></div></div></div>
 <div class="card"><b>🌿 Parks Tim & Lori Both Visited</b><div id="bothVisitedParks" class="note" style="margin-top:8px">No parks marked as visited by both yet.</div></div>
-<div class="card"><div class="note"><b>Park information source:</b> West Virginia State Parks. Lodging means the park currently lists cabins, a lodge, or another overnight stay. Restaurant status reflects an on-site dining operation listed by WV State Parks; hours and availability can change seasonally.</div></div>
+<div class="card"><div class="note"><b>Park information source:</b> West Virginia State Parks. Lodging means the park currently lists cabins, a lodge, or another overnight stay. Restaurant status reflects an on-site dining operation listed by WV State Parks & Forests; hours and availability can change seasonally.</div></div>
 </section>
 <section id="backup" class="panel hidden"><div class="card"><b>App version</b><div class="note">State Parks + markers + Both roads = purple • Both counties = light green/gray border • Build 2026-09-29 • Road clicking fixed</div></div>
 <div class="card"><b>Travel History Backup</b><p class="note">Your map markings are stored on this phone/browser. Export a backup occasionally so your travel history is safe.</p>
@@ -78,7 +78,7 @@ function cstyle(f){let id=String(f.properties.FIPS??f.properties.CO_CODE??f.prop
 function routeColor(v,fallback){return !v?fallback:(people(v)==="tim"?"#e05a47":people(v)==="lori"?"#2d6cdf":"#7a3fb5")}
 function rstyle(f){let p=f.properties||{},v=state.routes[String(p.OBJECTID)],s=String(p.SignSystem),c=s==="1"?"#2458a6":s==="2"?"#d66b6b":"#777";if(state.travelOnly && !v)return{color:c,weight:0,opacity:0};return{color:routeColor(v,c),weight:v?8:(s==="1"?6:5),opacity:v?1:(s==="1"?.9:.65),interactive:true}}
 const map=L.map("map",{zoomControl:false}).setView([38.65,-80.6],7.6);L.control.zoom({position:"bottomright"}).addTo(map);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"© Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community"}).addTo(map);
 L.circle([38.65,-80.6],{radius:160934,color:"#6f8799",weight:1,dashArray:"6 8",fillOpacity:.025,interactive:false}).addTo(map);
 
 const countyLayer=L.esri.featureLayer({url:COUNTY_URL,where:"1=1",style:cstyle,onEachFeature:(f,l)=>{let p=f.properties,id=String(p.FIPS??p.CO_CODE??p.OBJECTID),name=p.NAME||"County";l.on("click",()=>select("county",id,name))}}).addTo(map);
@@ -123,6 +123,7 @@ const PARKS=[
 {name:"Tygart Lake State Park",city:"Grafton",address:"1240 Paul E. Malone Rd, Grafton, WV 26354",phone:"304-265-6144",lodging:"Cabins, lodge and camping",restaurant:"Yes — The Lodge Restaurant",url:"https://wvstateparks.com/parks/tygart-lake-state-park/",lat:39.313,lng:-80.009},
 {name:"Valley Falls State Park",city:"Fairmont",address:"720 Valley Falls Rd., Fairmont, WV 26554",phone:"304-367-2719",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/valley-falls-state-park/",lat:39.26,lng:-80.061},
 {name:"Watoga State Park",city:"Marlinton",address:"4800 Watoga Park Rd., Marlinton, WV 24954",phone:"304-799-4087",lodging:"Cabins and camping",restaurant:"No",url:"https://wvstateparks.com/parks/watoga-state-park/",lat:38.114,lng:-80.15},
+{name:"Coopers Rock State Forest",city:"Bruceton Mills",address:"61 County Line Dr., Bruceton Mills, WV 26525",phone:"304-594-1561",lodging:"Camping (50 campsites)",restaurant:"No — Trading Post has snacks and gifts",url:"https://wvstateparks.com/parks/coopers-rock-state-forest/",lat:39.65564,lng:-79.78783},
 {name:"Watters Smith Memorial State Park",city:"Lost Creek",address:"831 RR 3, Duck Creek Rd., Lost Creek, WV 26385",phone:"304-745-3081",lodging:"No overnight lodging",restaurant:"No",url:"https://wvstateparks.com/parks/watters-smith-memorial-state-park/",lat:39.104,lng:-80.454}
 ];
 function parkPeople(id){
