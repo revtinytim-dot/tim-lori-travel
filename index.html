@@ -13,7 +13,7 @@
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#18212b;background:#eef2f5}
 header{background:#173b2c;color:#fff;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));position:sticky;top:0;z-index:1000}
 h1{font-size:19px;margin:0}.sub{font-size:11px;opacity:.85;margin-top:2px}
-.tabs{display:flex;gap:6px;margin-top:9px;overflow:auto}.tabs button{white-space:nowrap;border:1px solid #ffffff44;background:#ffffff18;color:#fff;border-radius:20px;padding:8px 12px;font-weight:700}.tabs button.active{background:#fff;color:#173b2c}.tabs .filterBtn.on{background:#f3d2ea;color:#4b205f;border-color:#f3d2ea}
+.tabs{display:flex;gap:6px;margin-top:9px;overflow:auto}.tabs button{white-space:nowrap;border:1px solid #ffffff44;background:#ffffff18;color:#fff;border-radius:20px;padding:8px 12px;font-weight:700}.tabs button.active{background:#fff;color:#173b2c}.tabs .filterBtn.on{background:#9BE564;color:#173b2c;border-color:#9BE564}
 #map{height:62vh;min-height:430px}.panel{padding:10px 12px 24px}.card{background:#fff;border:1px solid #d8dee5;border-radius:12px;padding:12px;margin-bottom:10px}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{padding:10px;border-radius:10px;background:#f3f5f6}.num{font-size:22px;font-weight:800}.label{font-size:11px;color:#66717d}
 button,input,select{font:inherit}button{min-height:42px;cursor:pointer} .actions{display:flex;gap:7px;flex-wrap:wrap}.actions button{border:1px solid #cbd3da;background:#fff;border-radius:8px;padding:8px 11px;font-weight:700}.actions .primary{background:#1f6f4a;color:#fff;border-color:#1f6f4a}
@@ -39,11 +39,11 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 </div></div>
 <div class="card"><b>Legend</b><div class="legend" style="margin-top:9px">
 <div class="leg"><span class="county"></span> Unvisited county</div>
-<div class="leg"><span class="county" style="background:#d94841"></span> Visited county</div>
+<div class="leg"><span class="county" style="background:#e05a47"></span> Tim visited</div><div class="leg"><span class="county" style="background:#2d6cdf"></span> Lori visited</div><div class="leg"><span class="county" style="background:#9BE564"></span> Both visited</div>
 <div class="leg"><span class="sw" style="background:#2458a6"></span> Interstate</div>
 <div class="leg"><span class="sw" style="background:#d66b6b"></span> U.S. Route</div>
 <div class="leg"><span class="sw" style="background:#555"></span> WV Route</div>
-<div class="leg"><span class="sw" style="background:#9BE564;height:8px"></span> Both traveled</div>
+
 </div></div>
 </section>
 
@@ -58,7 +58,7 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 <div class="card"><b>🌿 Parks Tim & Lori Both Visited</b><div id="bothVisitedParks" class="note" style="margin-top:8px">No parks marked as visited by both yet.</div></div>
 <div class="card"><div class="note"><b>Park information source:</b> West Virginia State Parks. Lodging means the park currently lists cabins, a lodge, or another overnight stay. Restaurant status reflects an on-site dining operation listed by WV State Parks; hours and availability can change seasonally.</div></div>
 </section>
-<section id="backup" class="panel hidden">
+<section id="backup" class="panel hidden"><div class="card"><b>App version</b><div class="note">State Parks + markers + Both = light green • Build 2026-09-29</div></div>
 <div class="card"><b>Travel History Backup</b><p class="note">Your map markings are stored on this phone/browser. Export a backup occasionally so your travel history is safe.</p>
 <div class="actions"><button class="primary" id="export">Export Backup</button><button id="import">Import Backup</button><input id="file" type="file" accept=".json" hidden></div></div>
 <div class="card"><b>Clear all tracking</b><p class="note">This removes the markings stored on this device. Export a backup first.</p><button id="reset">Reset Tracking</button></div>
