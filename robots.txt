@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://revtinytim-dot.github.io/tim-lori-travel/sitemap.xml
