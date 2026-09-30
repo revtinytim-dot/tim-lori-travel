@@ -1,1 +1,10 @@
-{"name":"Timmy & Lori's Travels","short_name":"Timmy & Lori","start_url":"./","display":"standalone","background_color":"#eef2f5","theme_color":"#173b2c","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name":"Timmy & Lori’s Travels",
+  "short_name":"Timmy & Lori’s Travels",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#173b2c",
+  "theme_color":"#173b2c",
+  "description":"Timmy & Lori’s West Virginia travel map, state parks and favorite restaurants.",
+  "icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
