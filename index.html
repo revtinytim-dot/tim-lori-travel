@@ -32,7 +32,7 @@ input{width:100%;padding:11px;border:1px solid #cbd3da;border-radius:8px}.muted{
 .both-list{list-style:none;padding:0;margin:0}.both-list li{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #e6eaee}.both-list li:last-child{border-bottom:0}.both-dot{width:12px;height:12px;border-radius:50%;background:#9BE564;border:2px solid #47751e;flex:0 0 auto}.both-list a{color:#1f6f4a;text-decoration:none;font-weight:700}.park-marker{width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35)}.park-marker span{transform:rotate(45deg);font-size:11px;font-weight:900;color:#fff}.park-marker.unvisited{background:#68737e}.park-marker.tim{background:#e05a47}.park-marker.lori{background:#2d6cdf}.park-marker.both{background:#9BE564;border-color:#47751e}.park-popup b{font-size:14px}.park-popup .small{font-size:11px;color:#66717d}
 
 .restaurant-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.restaurant-grid .full{grid-column:1/-1}.restaurant-form label{display:block;font-size:11px;font-weight:800;color:#59636d;margin:7px 0 4px}.restaurant-form input,.restaurant-form select,.restaurant-form textarea{width:100%;padding:10px;border:1px solid #cbd3da;border-radius:8px;background:#fff}.restaurant-form textarea{min-height:80px;resize:vertical}.restaurant-list{display:grid;gap:10px}.restaurant-card{background:#fff;border:1px solid #d8dee5;border-radius:12px;padding:12px}.restaurant-card h3{margin:0 0 4px;font-size:16px}.restaurant-meta{font-size:12px;color:#66717d;line-height:1.5}.restaurant-badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#f3f5f6;font-size:10px;font-weight:800;margin:3px 4px 0 0}.restaurant-badge.favorite{background:#fde5e1;color:#9b3026}.restaurant-badge.visited{background:#e5f6d8;color:#47751e}.restaurant-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.restaurant-actions button{border:1px solid #cbd3da;background:#fff;border-radius:8px;padding:7px 10px;font-weight:700}.restaurant-actions .primary{background:#1f6f4a;color:#fff;border-color:#1f6f4a}.restaurant-count{font-size:12px;color:#66717d;margin-top:6px}.restaurant-empty{padding:16px;text-align:center;color:#66717d;background:#f8fafb;border-radius:10px}
-.restaurant-marker{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1f6f4a;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);font-size:12px}.restaurant-marker.favorite{background:#c53d32}.restaurant-popup b{font-size:14px}.restaurant-popup .small{font-size:11px;color:#66717d}.restaurant-filter{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}@media(max-width:600px){.restaurant-grid,.restaurant-filter{grid-template-columns:1fr}.restaurant-grid .full{grid-column:auto}}
+.restaurant-marker{width:24px;height:24px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;background:#1f6f4a;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);font-size:12px}.restaurant-marker span{transform:rotate(45deg)}.restaurant-marker.favorite{background:#c53d32}.restaurant-popup b{font-size:14px}.restaurant-popup .small{font-size:11px;color:#66717d}.restaurant-filter{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}@media(max-width:600px){.restaurant-grid,.restaurant-filter{grid-template-columns:1fr}.restaurant-grid .full{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -166,19 +166,45 @@ function parkPeople(id){
 function parkStatusText(v){return !v?"Not visited":v==="tim"?"Tim visited":v==="lori"?"Lori visited":"Both visited"}
 function parkStatusClass(v){return v||""}
 
+map.createPane("restaurantPane");map.getPane("restaurantPane").style.zIndex=650;
 const parkMarkersLayer=L.layerGroup().addTo(map);
 const restaurantMarkersLayer=L.layerGroup().addTo(map);
-function restaurantIcon(r){return L.divIcon({className:"",html:`<div class="restaurant-marker ${r.favorite?"favorite":""}">🍽️</div>`,iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-14]})}
+function restaurantIcon(r){return L.divIcon({className:"",html:`<div class="restaurant-marker ${r.favorite?"favorite":""}"><span>🍴</span></div>`,iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-14],pane:"restaurantPane"})}
 function renderRestaurantMarkers(){
   restaurantMarkersLayer.clearLayers();
   (state.restaurants||[]).forEach(r=>{
     const lat=Number(r.lat),lng=Number(r.lng);
     if(!Number.isFinite(lat)||!Number.isFinite(lng)) return;
     const status=restaurantPeopleText(r.visited), stars=r.rating?"⭐".repeat(Number(r.rating)):"";
-    const marker=L.marker([lat,lng],{icon:restaurantIcon(r),title:r.name});
+    const marker=L.marker([lat,lng],{icon:restaurantIcon(r),title:r.name,zIndexOffset:1000});
     marker.bindPopup(`<div class="restaurant-popup"><b>${escapeHtml(r.name)}</b><br><span class="small">${escapeHtml([r.city,status].filter(Boolean).join(" · "))}</span>${stars?`<br>${stars}`:""}${r.favorite?"<br>❤️ Favorite":""}<br><button style="margin-top:7px" onclick="openRestaurantFromMap('${r.id}')">Open restaurant details</button></div>`);
     marker.addTo(restaurantMarkersLayer);
   });
+}
+async function geocodeRestaurant(r){
+  if(!r || (Number.isFinite(Number(r.lat)) && Number.isFinite(Number(r.lng)))) return true;
+  const q=[r.name,r.address,r.city,"WV"].filter(Boolean).join(", ");
+  if(!q) return false;
+  try{
+    const u="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q="+encodeURIComponent(q);
+    const res=await fetch(u,{headers:{"Accept":"application/json"}});
+    const data=await res.json();
+    if(!data.length) return false;
+    r.lat=Number(data[0].lat); r.lng=Number(data[0].lon);
+    return Number.isFinite(r.lat)&&Number.isFinite(r.lng);
+  }catch(e){ return false; }
+}
+async function geocodeMissingRestaurants(){
+  let changed=false;
+  for(const r of (state.restaurants||[])){
+    if(!Number.isFinite(Number(r.lat))||!Number.isFinite(Number(r.lng))){
+      const ok=await geocodeRestaurant(r);
+      if(ok) changed=true;
+      await new Promise(resolve=>setTimeout(resolve,1100));
+    }
+  }
+  if(changed) save();
+  renderRestaurantMarkers();
 }
 window.openRestaurantFromMap=id=>{document.querySelectorAll(".tabs button[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab==="restaurants"));document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));document.getElementById("restaurants").classList.remove("hidden");setTimeout(()=>{map.invalidateSize();editRestaurant(id)},100)};
 function parkMarkerStatus(i){const v=parkPeople(i);return v||"unvisited"}
@@ -246,7 +272,7 @@ function stats(){restaurantStats();let vals=[...Object.values(state.counties),..
 document.querySelectorAll(".tabs button[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button[data-tab]").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll("section").forEach(x=>x.classList.add("hidden"));document.getElementById(b.dataset.tab).classList.remove("hidden");if(b.dataset.tab==="maptab")setTimeout(()=>map.invalidateSize(),100)});
 document.getElementById("travelOnly").onclick=()=>{state.travelOnly=!state.travelOnly;save();refreshLayers()};
 document.getElementById("locateRestaurant").onclick=async()=>{const name=document.getElementById("restaurantName").value.trim(),address=document.getElementById("restaurantAddress").value.trim(),city=document.getElementById("restaurantCity").value.trim();if(!name&&!address&&!city){alert("Enter the restaurant name and/or address first.");return}const btn=document.getElementById("locateRestaurant");btn.disabled=true;btn.textContent="📍 Finding...";try{const q=[name,address,city].filter(Boolean).join(", ");const u="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q="+encodeURIComponent(q);const res=await fetch(u,{headers:{"Accept":"application/json"}});const data=await res.json();if(!data.length)throw new Error("not found");document.getElementById("restaurantLat").value=data[0].lat;document.getElementById("restaurantLng").value=data[0].lon;alert("Map location found. Save the restaurant to place the pin.")}catch(e){alert("I couldn't automatically find that location. You can enter the latitude and longitude manually.")}finally{btn.disabled=false;btn.textContent="📍 Find Map Location"}};
-document.getElementById("saveRestaurant").onclick=()=>{const name=document.getElementById("restaurantName").value.trim();if(!name){alert("Please enter the restaurant name.");return}const id=document.getElementById("restaurantEditId").value||("r_"+Date.now()+"_"+Math.random().toString(36).slice(2,7));const existing=state.restaurants.find(r=>r.id===id);const lat=Number(document.getElementById("restaurantLat").value),lng=Number(document.getElementById("restaurantLng").value);const r={id,name,city:document.getElementById("restaurantCity").value.trim(),cuisine:document.getElementById("restaurantCuisine").value.trim(),rating:document.getElementById("restaurantRating").value,address:document.getElementById("restaurantAddress").value.trim(),lat:Number.isFinite(lat)?lat:null,lng:Number.isFinite(lng)?lng:null,phone:document.getElementById("restaurantPhone").value.trim(),visited:document.getElementById("restaurantVisited").value,favorite:document.getElementById("restaurantFavorite").value==="yes",firstVisit:document.getElementById("restaurantFirstVisit").value,notes:document.getElementById("restaurantNotes").value.trim(),added:existing?.added||new Date().toISOString()};if(existing)Object.assign(existing,r);else state.restaurants.push(r);save();clearRestaurantForm();renderRestaurants()};
+document.getElementById("saveRestaurant").onclick=async()=>{const name=document.getElementById("restaurantName").value.trim();if(!name){alert("Please enter the restaurant name.");return}const btn=document.getElementById("saveRestaurant");btn.disabled=true;btn.textContent="Saving...";try{const id=document.getElementById("restaurantEditId").value||("r_"+Date.now()+"_"+Math.random().toString(36).slice(2,7));const existing=state.restaurants.find(r=>r.id===id);const lat=Number(document.getElementById("restaurantLat").value),lng=Number(document.getElementById("restaurantLng").value);const r={id,name,city:document.getElementById("restaurantCity").value.trim(),cuisine:document.getElementById("restaurantCuisine").value.trim(),rating:document.getElementById("restaurantRating").value,address:document.getElementById("restaurantAddress").value.trim(),lat:Number.isFinite(lat)?lat:null,lng:Number.isFinite(lng)?lng:null,phone:document.getElementById("restaurantPhone").value.trim(),visited:document.getElementById("restaurantVisited").value,favorite:document.getElementById("restaurantFavorite").value==="yes",firstVisit:document.getElementById("restaurantFirstVisit").value,notes:document.getElementById("restaurantNotes").value.trim(),added:existing?.added||new Date().toISOString()};if(!Number.isFinite(r.lat)||!Number.isFinite(r.lng)) await geocodeRestaurant(r);if(existing)Object.assign(existing,r);else state.restaurants.push(r);save();clearRestaurantForm();renderRestaurants();renderRestaurantMarkers();if(!Number.isFinite(r.lat)||!Number.isFinite(r.lng)) alert("The restaurant was saved, but I couldn't find an exact map location. Edit it and enter latitude/longitude or use Find Map Location.");}finally{btn.disabled=false;btn.textContent="Save Restaurant"}};
 document.getElementById("cancelRestaurantEdit").onclick=()=>clearRestaurantForm();
 ["restaurantSearch","restaurantFilter","restaurantSort"].forEach(id=>document.getElementById(id).addEventListener(id==="restaurantSearch"?"input":"change",renderRestaurants));
 
@@ -255,6 +281,6 @@ document.getElementById("export").onclick=()=>{let a=document.createElement("a")
 document.getElementById("import").onclick=()=>document.getElementById("file").click();
 document.getElementById("file").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);state.counties=x.counties||{};state.routes=x.routes||{};state.parks=x.parks||{};state.restaurants=x.restaurants||[];save();refreshLayers();renderPark();renderRestaurants();alert("Backup imported.")}catch(e){alert("Could not import that backup.")}};r.readAsText(f)};
 document.getElementById("reset").onclick=()=>{if(confirm("Clear all travel markings, including state parks?")){state.counties={};state.routes={};state.parks={};state.restaurants=[];save();refreshLayers();renderPark();clearRestaurantForm();renderRestaurants()}};
-renderParkOptions();renderRestaurants();stats();refreshLayers();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]],{padding:[18,18]}),500);
+renderParkOptions();renderRestaurants();stats();refreshLayers();geocodeMissingRestaurants();setTimeout(()=>map.fitBounds([[37.0,-82.7],[40.7,-77.5]],{padding:[18,18]}),500);
 </script>
 </body></html>
